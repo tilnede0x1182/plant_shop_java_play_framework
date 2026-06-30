@@ -1,0 +1,20 @@
+@(target: models.User, user: Option[models.User])
+
+@views.html.main("Modifier " + target.getName(), user) {
+	<h1>Modifier @target.getName()</h1>
+	<form id="user-edit-form" data-id="@target.getId()">
+		<div class="mb-3">
+			<label class="form-label">Nom</label>
+			<input type="text" class="form-control" id="user-name" value="@target.getName()" required>
+		</div>
+		<div class="mb-3">
+			<label class="form-label">Email</label>
+			<input type="email" class="form-control" id="user-email" value="@target.getEmail()" required>
+		</div>
+		<div class="mb-3 form-check">
+			<input type="checkbox" class="form-check-input" id="user-admin" @if(target.isAdmin()){checked}>
+			<label class="form-check-label">Administrateur</label>
+		</div>
+		<button type="submit" class="btn btn-primary">Enregistrer</button>
+	</form>
+}

@@ -1,0 +1,8 @@
+@(target: models.User, user: Option[models.User])
+
+@views.html.main("Profil", user) {
+	<h1>Profil de @target.getName()</h1>
+	<p><strong>Email :</strong> @target.getEmail()</p>
+	<p><strong>R&ocirc;le :</strong> @if(target.isAdmin()){Administrateur}else{Utilisateur}</p>
+	<a href="/users/@target.getId()/edit" class="btn btn-primary mt-3">Modifier</a>
+}

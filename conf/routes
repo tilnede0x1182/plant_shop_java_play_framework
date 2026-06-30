@@ -1,9 +1,38 @@
 # Routes
 # This file defines all application routes (Higher priority routes first)
-# ~~~~
 
-# An example controller showing a sample home page
+# ---- Auth ----
+POST    /api/auth/register          controllers.AuthController.register(request: Request)
+POST    /api/auth/login             controllers.AuthController.login(request: Request)
+POST    /api/auth/logout            controllers.AuthController.logout()
+GET     /api/auth/me                controllers.AuthController.me(request: Request)
+
+# ---- Plants (public) ----
+GET     /api/plants                 controllers.PlantsController.index()
+GET     /api/plants/:id             controllers.PlantsController.show(id: Long)
+
+# ---- Admin Plants ----
+GET     /api/admin/plants           controllers.AdminPlantsController.index(request: Request)
+POST    /api/admin/plants           controllers.AdminPlantsController.create(request: Request)
+PATCH   /api/admin/plants/:id       controllers.AdminPlantsController.update(request: Request, id: Long)
+DELETE  /api/admin/plants/:id       controllers.AdminPlantsController.delete(request: Request, id: Long)
+
+# ---- Users (owner ou admin) ----
+GET     /api/users/:id              controllers.UsersController.show(request: Request, id: Long)
+PATCH   /api/users/:id              controllers.UsersController.update(request: Request, id: Long)
+
+# ---- Admin Users ----
+GET     /api/admin/users            controllers.AdminUsersController.index(request: Request)
+POST    /api/users                  controllers.AdminUsersController.create(request: Request)
+PATCH   /api/admin/users/:id        controllers.AdminUsersController.update(request: Request, id: Long)
+DELETE  /api/admin/users/:id        controllers.AdminUsersController.delete(request: Request, id: Long)
+
+# ---- Orders ----
+GET     /api/orders                 controllers.OrdersController.index(request: Request)
+POST    /api/orders                 controllers.OrdersController.create(request: Request)
+
+# ---- Pages front (Twirl) ----
 GET     /                           controllers.HomeController.index()
 
-# Map static resources from the /public folder to the /assets URL path
+# ---- Assets ----
 GET     /assets/*file               controllers.Assets.versioned(path="/public", file: Asset)

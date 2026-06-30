@@ -1,0 +1,9 @@
+@(user: Option[models.User])
+
+@views.html.main("Valider ma commande", user) {
+	<h1>Valider ma commande</h1>
+	<div id="flash-error" class="alert alert-danger d-none"></div>
+	<div id="order-review-container"></div>
+	<input type="hidden" id="order-items-input">
+	<button class="btn btn-success w-100 mt-3" id="confirm-order-btn">Confirmer la commande</button>
+}

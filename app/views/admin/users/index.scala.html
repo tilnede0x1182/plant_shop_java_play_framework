@@ -1,0 +1,28 @@
+@(users: java.util.List[models.User], user: Option[models.User])
+
+@views.html.main("Gestion Utilisateurs", user) {
+	<h1 class="mb-4">Gestion des Utilisateurs</h1>
+	<table class="table shadow">
+		<thead class="table-light">
+			<tr>
+				<th>Nom</th>
+				<th>Email</th>
+				<th>R&ocirc;le</th>
+				<th>Actions</th>
+			</tr>
+		</thead>
+		<tbody>
+			@for(targetUser <- users) {
+				<tr>
+					<td>@targetUser.getName()</td>
+					<td>@targetUser.getEmail()</td>
+					<td>@if(targetUser.isAdmin()){Admin}else{User}</td>
+					<td>
+						<a href="/admin/users/@targetUser.getId()/edit" class="btn btn-warning btn-sm">&#9998; Modifier</a>
+						<button class="btn btn-danger btn-sm ms-2" onclick="deleteUser(@targetUser.getId())">&#128465; Supprimer</button>
+					</td>
+				</tr>
+			}
+		</tbody>
+	</table>
+}

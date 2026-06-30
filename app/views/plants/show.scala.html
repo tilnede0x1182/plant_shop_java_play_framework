@@ -1,0 +1,21 @@
+@(plant: models.Plant, user: Option[models.User])
+
+@views.html.main(plant.getName(), user) {
+	<h1>@plant.getName()</h1>
+	<p><strong>Prix :</strong> @plant.getPrice() &euro;</p>
+	<p><strong>Description :</strong> @plant.getDescription()</p>
+	@if(user.isDefined && user.get.isAdmin()) {
+		<p><strong>Stock :</strong> @plant.getStock() unit&eacute;s</p>
+	}
+
+	<div class="d-flex gap-2 mt-3">
+		<button class="btn btn-success"
+			onclick="addToCart(@plant.getId(), '@plant.getName()', @plant.getPrice(), @plant.getStock())">
+			Ajouter au panier
+		</button>
+		@if(user.isDefined && user.get.isAdmin()) {
+			<a href="/admin/plants/@plant.getId()/edit" class="btn btn-warning">Modifier</a>
+		}
+		<a href="/plants" class="btn btn-secondary">Retour</a>
+	</div>
+}

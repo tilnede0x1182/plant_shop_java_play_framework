@@ -1,0 +1,12 @@
+.custom-navbar {
+	background-color: #1d8038;
+}
+
+a.cart-plant-link {
+	color: black;
+	text-decoration: none;
+}
+
+a.cart-plant-link:hover {
+	text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}

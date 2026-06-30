@@ -1,0 +1,30 @@
+@(orders: java.util.List[models.Order], user: Option[models.User])
+
+@views.html.main("Mes Commandes", user) {
+	<h1 class="text-center mb-4">Mes Commandes</h1>
+
+	@if(orders.isEmpty()) {
+		<div class="alert alert-info">Aucune commande.</div>
+	} else {
+		<table class="table shadow">
+			<thead class="table-light">
+				<tr>
+					<th>#</th>
+					<th>Total</th>
+					<th>Statut</th>
+					<th>Date</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for(order <- orders) {
+					<tr>
+						<td>@order.getId()</td>
+						<td>@order.getTotal() &euro;</td>
+						<td>@order.getStatus()</td>
+						<td>@order.getCreatedAt()</td>
+					</tr>
+				}
+			</tbody>
+		</table>
+	}
+}

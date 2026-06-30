@@ -23,11 +23,19 @@ import java.util.Random;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+// ==============================================================================
+// Classe principale
+// ==============================================================================
+
 /**
- * Test end-to-end Java 21 – aligné sur le scénario C++ complet.
+ * Test end-to-end Java 21.
  * Dépendance : org.json.
  */
 public final class TestE2E {
+
+	// --------------------------------------------------------------------------
+	// Configuration
+	// --------------------------------------------------------------------------
 
 	/**
 	 * Lit les variables d environnement depuis .env.
@@ -49,7 +57,6 @@ public final class TestE2E {
 		return m;
 	}
 
-	/* -------- Config -------- */
 	private static final Map<String, String> CFG;
 	static {
 		try {
@@ -58,14 +65,21 @@ public final class TestE2E {
 			throw new RuntimeException(e);
 		}
 	}
-	private static final String PORT = CFG.getOrDefault("SERVER_ADDRESS", "4100");
+	private static final String PORT = CFG.getOrDefault("SERVER_ADDRESS", "4500");
 	private static final String BASE = "http://localhost:" + PORT + "/api";
 	private static final String ADMIN_EMAIL = "admin1@planteshop.com";
 	private static final String ADMIN_PWD = "password";
 
-	/* -------- Cookies -------- */
+	// --------------------------------------------------------------------------
+	// Donnees d'instance
+	// --------------------------------------------------------------------------
+
 	private final Map<String, String> cookie = new HashMap<>();
 	private final String timestamp;
+
+	// --------------------------------------------------------------------------
+	// Fonctions utilitaires
+	// --------------------------------------------------------------------------
 
 	/**
 	 * Constructeur initialisant le timestamp.
@@ -215,6 +229,9 @@ public final class TestE2E {
 		return new JSONArray();
 	}
 
+	// --------------------------------------------------------------------------
+	// Helpers authentification
+	// --------------------------------------------------------------------------
 
 	/**
 	 * Effectue une connexion.
@@ -241,8 +258,12 @@ public final class TestE2E {
 		call("POST", "/auth/register", 201, j, who);
 	}
 
+	// --------------------------------------------------------------------------
+	// Assertions
+	// --------------------------------------------------------------------------
+
 	/**
-	 * Vérifie l égalité d une valeur JSON.
+	 * Vérifie l'égalité d'une valeur JSON.
 	 * @param o JSONObject Objet source
 	 * @param k String Clé
 	 * @param e Object Valeur attendue
@@ -282,6 +303,14 @@ public final class TestE2E {
 		}
 	}
 
+	// ==========================================================================
+	// Modules de test
+	// ==========================================================================
+
+	// --------------------------------------------------------------------------
+	// Test Plants
+	// --------------------------------------------------------------------------
+
 	/**
 	 * Module de test pour les plantes.
 	 * @throws Exception En cas d erreur
@@ -305,6 +334,10 @@ public final class TestE2E {
 		call("DELETE", "/admin/plants/" + id, 200, null, "admin");
 	}
 
+	// --------------------------------------------------------------------------
+	// Test Users
+	// --------------------------------------------------------------------------
+
 	/**
 	 * Module de test pour les utilisateurs.
 	 * @throws Exception En cas d erreur
@@ -324,6 +357,10 @@ public final class TestE2E {
 		assert_eq(get, "name", "Tester Update");
 		call("DELETE", "/users/" + id, 200, null, "admin");
 	}
+
+	// --------------------------------------------------------------------------
+	// Test Orders
+	// --------------------------------------------------------------------------
 
 	/**
 	 * Module de test pour les commandes.
@@ -371,6 +408,10 @@ public final class TestE2E {
 		call("DELETE", "/admin/plants/" + pid, 200, null, "admin");
 	}
 
+	// --------------------------------------------------------------------------
+	// Test User Profile
+	// --------------------------------------------------------------------------
+
 	/**
 	 * Module de test pour le profil utilisateur.
 	 * @param email String Email de l utilisateur
@@ -407,6 +448,10 @@ public final class TestE2E {
 		assert_eq(check, "admin", false); // Vérification que l'utilisateur n'est pas devenu admin
 	}
 
+	// --------------------------------------------------------------------------
+	// Test Auth Roles
+	// --------------------------------------------------------------------------
+
 	/**
 	 * Module de test pour les rôles et permissions.
 	 * @throws Exception En cas d erreur
@@ -423,6 +468,10 @@ public final class TestE2E {
 
 		call("GET", "/users", 403, null, "user");
 	}
+
+	// --------------------------------------------------------------------------
+	// Test Admin Plants
+	// --------------------------------------------------------------------------
 
 	/**
 	 * Module de test admin pour les plantes.
@@ -444,6 +493,10 @@ public final class TestE2E {
 		call("PATCH", "/admin/plants/" + id, 200, price_update, "admin");
 		call("DELETE", "/admin/plants/" + id, 200, null, "admin");
 	}
+
+	// --------------------------------------------------------------------------
+	// Test Admin Users
+	// --------------------------------------------------------------------------
 
 	/**
 	 * Module de test admin pour les utilisateurs.
@@ -484,6 +537,10 @@ public final class TestE2E {
 		call("DELETE", "/users/" + id, 200, null, "admin");
 	}
 
+	// --------------------------------------------------------------------------
+	// Test Auth Me
+	// --------------------------------------------------------------------------
+
 	/**
 	 * Module de test pour endpoint /auth/me.
 	 * @throws Exception En cas d erreur
@@ -498,8 +555,12 @@ public final class TestE2E {
 		System.out.printf("   ↳ Utilisateur connecté: %s (%s)%n", mail, nom);
 	}
 
+	// ==========================================================================
+	// Main
+	// ==========================================================================
+
 	/**
-	 * Point d entrée des tests.
+	 * Point d'entrée des tests.
 	 * @param args String[] Arguments CLI
 	 */
 	public static void main(String[] args) {

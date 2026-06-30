@@ -1,21 +1,28 @@
 package controllers;
 
+// ==============================================================================
+// Importations
+// ==============================================================================
+
 import play.mvc.*;
 
+// ==============================================================================
+// Controleur Home
+// ==============================================================================
+
 /**
- * This controller contains an action to handle HTTP requests
- * to the application's home page.
+ *	Controleur de la page d'accueil.
+ *	Redirige vers le catalogue des plantes.
  */
 public class HomeController extends Controller {
 
-    /**
-     * An action that renders an HTML page with a welcome message.
-     * The configuration in the <code>routes</code> file means that
-     * this method will be called when the application receives a
-     * <code>GET</code> request with a path of <code>/</code>.
-     */
-    public Result index() {
-        return ok(views.html.index.render());
-    }
-
+	/**
+	 *	Redirige la racine vers /plants.
+	 *	GET /
+	 *
+	 *	@return Redirection 302 vers /plants
+	 */
+	public Result index() {
+		return redirect("/plants");
+	}
 }

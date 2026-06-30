@@ -1,0 +1,29 @@
+@(plants: java.util.List[models.Plant], user: Option[models.User])
+
+@views.html.main("Gestion Plantes", user) {
+	<h1 class="mb-4">Gestion des Plantes</h1>
+	<a href="/admin/plants/new" class="btn btn-success mb-3">Nouvelle Plante</a>
+	<table class="table shadow">
+		<thead class="table-light">
+			<tr>
+				<th>Nom</th>
+				<th>Prix</th>
+				<th>Stock</th>
+				<th>Actions</th>
+			</tr>
+		</thead>
+		<tbody>
+			@for(plant <- plants) {
+				<tr>
+					<td><a href="/plants/@plant.getId()">@plant.getName()</a></td>
+					<td>@plant.getPrice() &euro;</td>
+					<td>@plant.getStock()</td>
+					<td>
+						<a href="/admin/plants/@plant.getId()/edit" class="btn btn-warning btn-sm me-2">&#9998; Modifier</a>
+						<button class="btn btn-danger btn-sm" onclick="deletePlant(@plant.getId())">&#128465; Supprimer</button>
+					</td>
+				</tr>
+			}
+		</tbody>
+	</table>
+}

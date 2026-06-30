@@ -1,0 +1,33 @@
+@(plants: java.util.List[models.Plant], user: Option[models.User])
+
+@views.html.main("Liste des Plantes", user) {
+	<h1 class="mb-4 text-center">&#127807; Liste des Plantes</h1>
+
+	@if(user.isDefined && user.get.isAdmin()) {
+		<a href="/admin/plants/new" class="btn btn-success mb-3">Nouvelle Plante</a>
+	}
+
+	<div class="row">
+		@for(plant <- plants) {
+			<div class="col-md-4">
+				<div class="card mb-3 shadow-sm">
+					<div class="card-body">
+						<h5 class="card-title">
+							<a href="/plants/@plant.getId()" class="text-decoration-none text-dark">
+								@plant.getName()
+							</a>
+						</h5>
+						<p class="mb-0"><strong>Prix :</strong> @plant.getPrice() &euro;</p>
+						@if(user.isDefined && user.get.isAdmin()) {
+							<p class="mb-0"><strong>Stock :</strong> @plant.getStock() unit&eacute;@if(plant.getStock() > 1){s}</p>
+						}
+						<button class="btn btn-success w-100 mt-2"
+							onclick="addToCart(@plant.getId(), '@plant.getName()', @plant.getPrice(), @plant.getStock())">
+							Ajouter au panier
+						</button>
+					</div>
+				</div>
+			</div>
+		}
+	</div>
+}

@@ -1,0 +1,25 @@
+@()
+
+@views.html.main("Inscription", None) {
+	<h1 class="text-center mb-4">Cr&eacute;er un compte</h1>
+	<div class="row justify-content-center">
+		<div class="col-md-6">
+			<div id="flash-error" class="alert alert-danger d-none"></div>
+			<form id="register-form">
+				<div class="mb-3">
+					<label class="form-label">Nom</label>
+					<input type="text" class="form-control" id="register-name" required>
+				</div>
+				<div class="mb-3">
+					<label class="form-label">Email</label>
+					<input type="email" class="form-control" id="register-email" required>
+				</div>
+				<div class="mb-3">
+					<label class="form-label">Mot de passe</label>
+					<input type="password" class="form-control" id="register-password" required>
+				</div>
+				<button type="submit" class="btn btn-success w-100">Cr&eacute;er un compte</button>
+			</form>
+		</div>
+	</div>
+}

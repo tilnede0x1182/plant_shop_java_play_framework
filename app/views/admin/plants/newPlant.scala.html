@@ -1,0 +1,24 @@
+@(user: Option[models.User])
+
+@views.html.main("Nouvelle Plante", user) {
+	<h1>Nouvelle Plante</h1>
+	<form id="plant-form">
+		<div class="mb-3">
+			<label class="form-label">Nom</label>
+			<input type="text" class="form-control" id="plant-name" required>
+		</div>
+		<div class="mb-3">
+			<label class="form-label">Description</label>
+			<textarea class="form-control" id="plant-description"></textarea>
+		</div>
+		<div class="mb-3">
+			<label class="form-label">Prix</label>
+			<input type="number" class="form-control" id="plant-price" min="1" required>
+		</div>
+		<div class="mb-3">
+			<label class="form-label">Stock</label>
+			<input type="number" class="form-control" id="plant-stock" min="0" required>
+		</div>
+		<button type="submit" class="btn btn-success">Cr&eacute;er</button>
+	</form>
+}
