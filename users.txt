@@ -1,0 +1,38 @@
+Administrateurs :
+
+admin1@planteshop.com password
+admin2@planteshop.com password
+admin3@planteshop.com password
+
+Utilisateurs :
+
+david_roux52@gmail.com pw650645521
+katia_durand62@gmail.com pw974723528
+katia_fournier88@yahoo.com pw458188346
+jules_bernard61@hotmail.com pw387111278
+inès_bernard55@hotmail.com pw510892136
+léo_moreau33@hotmail.com pw921592354
+emma_petit90@gmail.com pw644246370
+inès_dupont61@gmail.com pw469138362
+alice_richard68@yahoo.com pw384348871
+jules_durand94@hotmail.com pw763047463
+cathy_petit95@yahoo.com pw671697185
+léo_martin62@yahoo.com pw435941664
+alice_martin30@gmail.com pw295285600
+katia_bernard76@hotmail.com pw165608392
+inès_durand98@gmail.com pw874040210
+alice_petit44@hotmail.com pw692640733
+david_roux92@gmail.com pw706891999
+bruno_robert28@gmail.com pw648510970
+jules_dupont78@gmail.com pw220413106
+jules_bernard43@yahoo.com pw999720223
+jules_moreau39@yahoo.com pw623229582
+david_dupont92@hotmail.com pw786121883
+alice_durand72@gmail.com pw891202807
+inès_dupont50@yahoo.com pw943219776
+bruno_martin68@yahoo.com pw272749956
+cathy_moreau34@gmail.com pw756290410
+léo_fournier99@hotmail.com pw599584199
+alice_martin28@yahoo.com pw810241137
+bruno_dupont37@gmail.com pw921246914
+léo_moreau50@hotmail.com pw224585406
