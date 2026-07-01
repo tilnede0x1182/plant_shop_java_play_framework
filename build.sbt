@@ -19,3 +19,4 @@ libraryDependencies += "io.jsonwebtoken" % "jjwt-impl" % "0.12.6" % Runtime
 libraryDependencies += "io.jsonwebtoken" % "jjwt-jackson" % "0.12.6" % Runtime
 libraryDependencies += "org.json" % "json" % "20240303" % Test
 libraryDependencies += "org.jsoup" % "jsoup" % "1.18.3" % Test
+libraryDependencies += "org.seleniumhq.selenium" % "selenium-java" % "4.27.0" % Test

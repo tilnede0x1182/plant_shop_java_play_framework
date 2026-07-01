@@ -13,6 +13,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +22,13 @@ import org.json.JSONObject;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.chrome.ChromeOptions;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
 
 // ==============================================================================
 // Classe principale
@@ -103,7 +111,7 @@ public final class E2EFrontend {
 	 * @return Code HTTP de la reponse
 	 * @throws Exception En cas d erreur
 	 */
-	private int apiCall(String method, String path, JSONObject body, String who) throws Exception {
+	private JSONObject apiCall(String method, String path, JSONObject body, String who) throws Exception {
 		HttpRequest.Builder builder = HttpRequest.newBuilder().uri(URI.create(API + path));
 		if (body != null) {
 			builder.method(method, HttpRequest.BodyPublishers.ofString(body.toString()));
@@ -114,7 +122,9 @@ public final class E2EFrontend {
 		if (cookies.get(who) != null) builder.header("Cookie", cookies.get(who));
 		HttpResponse<String> response = HttpClient.newBuilder().build().send(builder.build(), HttpResponse.BodyHandlers.ofString());
 		storeCookies(response, who);
-		return response.statusCode();
+		String responseBody = response.body().trim();
+		if (responseBody.startsWith("{")) return new JSONObject(responseBody);
+		return new JSONObject().put("status", response.statusCode());
 	}
 
 	/**
@@ -125,8 +135,8 @@ public final class E2EFrontend {
 	 * @throws Exception En cas d erreur
 	 */
 	private void loginApi(String email, String password, String who) throws Exception {
-		int code = apiCall("POST", "/auth/login", new JSONObject().put("email", email).put("password", password), who);
-		System.out.printf("✅ Login API %s [%d]%n", who, code);
+		JSONObject result = apiCall("POST", "/auth/login", new JSONObject().put("email", email).put("password", password), who);
+		System.out.printf("✅ Login API %s [%s]%n", who, result.optString("email", "ok"));
 	}
 
 	/**
@@ -207,6 +217,18 @@ public final class E2EFrontend {
 		if (!found) throw new RuntimeException("Texte introuvable : " + text);
 	}
 
+	/**
+	 * Verifie qu un texte est absent du document.
+	 * @param doc Document jsoup
+	 * @param text Texte qui ne doit pas etre present
+	 * @param label Description pour le log
+	 */
+	private void assertNotContains(Document doc, String text, String label) {
+		boolean absent = !doc.text().contains(text);
+		System.out.printf("%s   ↳ %s%n", absent ? "✅" : "❌", label);
+		if (!absent) throw new RuntimeException("Texte present alors qu il ne devrait pas : " + text);
+	}
+
 	// ==========================================================================
 	// Modules de test
 	// ==========================================================================
@@ -259,8 +281,8 @@ public final class E2EFrontend {
 	 * @throws Exception En cas d erreur
 	 */
 	private void registerApi(String email, String password, String who) throws Exception {
-		int code = apiCall("POST", "/auth/register", new JSONObject().put("email", email).put("password", password).put("name", "Test User"), who);
-		System.out.printf("✅ Register API %s [%d]%n", who, code);
+		JSONObject result = apiCall("POST", "/auth/register", new JSONObject().put("email", email).put("password", password).put("name", "Test User"), who);
+		System.out.printf("✅ Register API %s [%s]%n", who, result.optString("email", "ok"));
 	}
 
 	/**
@@ -364,6 +386,7 @@ public final class E2EFrontend {
 		System.out.println("✅   ↳ /admin/users/1/edit accessible (200)");
 		testAdminCrudPlantes();
 		testAdminCrudUtilisateurs();
+		testSuppressionImpactOrders();
 	}
 
 	/**
@@ -371,15 +394,38 @@ public final class E2EFrontend {
 	 * @throws Exception En cas d erreur
 	 */
 	private void testAdminCrudPlantes() throws Exception {
-		apiCall("POST", "/admin/plants", new JSONObject().put("name", "Plante Test Frontend").put("price", 42).put("stock", 7), "admin");
-		Document listApres = getPage("/admin/plants", "admin");
-		assertText(listApres, "Plante Test Frontend", "Plante creee visible dans la liste");
+		JSONObject created = apiCall("POST", "/admin/plants", new JSONObject().put("name", "Plante CRUD Test").put("price", 42).put("stock", 7).put("description", "Test"), "admin");
+		int plantId = created.getInt("id");
+		Document listCreate = getPage("/admin/plants", "admin");
+		assertText(listCreate, "Plante CRUD Test", "Plante creee visible");
 		System.out.println("✅   ↳ CRUD: plante creee et visible");
-		apiCall("PATCH", "/admin/plants/1", new JSONObject().put("name", "Rose 1 Modifiee"), "admin");
+		apiCall("PATCH", "/admin/plants/" + plantId, new JSONObject().put("name", "Plante CRUD Modifiee").put("price", 99), "admin");
 		Document listModif = getPage("/admin/plants", "admin");
-		assertText(listModif, "Rose 1 Modifiee", "Plante modifiee visible");
-		System.out.println("✅   ↳ CRUD: plante modifiee et visible");
-		apiCall("PATCH", "/admin/plants/1", new JSONObject().put("name", "Rose 1"), "admin");
+		assertText(listModif, "Plante CRUD Modifiee", "Nom modifie visible");
+		assertText(listModif, "99", "Prix modifie visible");
+		System.out.println("✅   ↳ CRUD: plante modifiee (nom + prix) et visible");
+		apiCall("DELETE", "/admin/plants/" + plantId, null, "admin");
+		Document listDelete = getPage("/admin/plants", "admin");
+		assertNotContains(listDelete, "Plante CRUD Modifiee", "Plante supprimee absente de la liste");
+		System.out.println("✅   ↳ CRUD: plante supprimee et absente");
+	}
+
+	/**
+	 * Teste l impact de la suppression d une plante sur les commandes.
+	 * @throws Exception En cas d erreur
+	 */
+	private void testSuppressionImpactOrders() throws Exception {
+		JSONObject plant = apiCall("POST", "/admin/plants", new JSONObject().put("name", "Plante Order Test").put("price", 10).put("stock", 5).put("description", "Test"), "admin");
+		int plantId = plant.getInt("id");
+		apiCall("POST", "/orders", new JSONObject().put("items", new org.json.JSONArray().put(new JSONObject().put("plant_id", plantId).put("quantity", 1))), "admin");
+		Document ordersBefore = getPage("/orders", "admin");
+		assertText(ordersBefore, "Plante Order Test", "Plante visible dans commande");
+		System.out.println("✅   ↳ Plante visible dans commande avant suppression");
+		apiCall("DELETE", "/admin/plants/" + plantId, null, "admin");
+		Document ordersAfter = getPage("/orders", "admin");
+		assertNotContains(ordersAfter, "Plante Order Test", "Plante absente apres suppression");
+		assertNotContains(ordersAfter, "supprim", "Pas de mention supprimee");
+		System.out.println("✅   ↳ Commande intacte, plante absente sans mention");
 	}
 
 	/**
@@ -389,11 +435,18 @@ public final class E2EFrontend {
 	private void testAdminCrudUtilisateurs() throws Exception {
 		Document usersBefore = getPage("/admin/users", "admin");
 		assertExists(usersBefore, "table", "Tableau utilisateurs present");
+		apiCall("PATCH", "/admin/users/4", new JSONObject().put("name", "Jules Modifie"), "admin");
+		Document editAfterName = getPage("/admin/users/4/edit", "admin");
+		assertText(editAfterName, "Jules Modifie", "Nom modifie visible dans le formulaire");
+		System.out.println("✅   ↳ CRUD: nom utilisateur modifie et visible");
 		apiCall("PATCH", "/admin/users/4", new JSONObject().put("admin", true), "admin");
-		Document usersAfter = getPage("/admin/users/4/edit", "admin");
-		assertExists(usersAfter, "form#user-edit-form", "Formulaire edit visible");
-		System.out.println("✅   ↳ CRUD: droits admin modifies");
-		apiCall("PATCH", "/admin/users/4", new JSONObject().put("admin", false), "admin");
+		Document listAfterAdmin = getPage("/admin/users", "admin");
+		assertText(listAfterAdmin, "Jules Modifie", "Utilisateur promu visible");
+		System.out.println("✅   ↳ CRUD: utilisateur promu admin");
+		apiCall("PATCH", "/admin/users/4", new JSONObject().put("admin", false).put("name", "Jules Roux"), "admin");
+		Document listAfterRevert = getPage("/admin/users", "admin");
+		assertText(listAfterRevert, "Jules Roux", "Nom restaure visible");
+		System.out.println("✅   ↳ CRUD: nom et droits restaures");
 	}
 
 	// --------------------------------------------------------------------------
@@ -418,6 +471,141 @@ public final class E2EFrontend {
 		}
 	}
 
+	// --------------------------------------------------------------------------
+	// Phase 5 - Tests navigateur (Playwright via Node.js)
+	// --------------------------------------------------------------------------
+
+	/**
+	 * Lance les tests navigateur via Selenium WebDriver.
+	 * @throws Exception En cas d erreur
+	 */
+	private void runBrowserTests() throws Exception {
+		System.out.println("\n📌 TEST FRONTEND: NAVIGATEUR (Selenium)");
+		ChromeOptions options = new ChromeOptions();
+		options.addArguments("--headless", "--no-sandbox", "--disable-dev-shm-usage", "--window-size=1920,1080");
+		WebDriver driver = new ChromeDriver(options);
+		WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(5));
+		try {
+			testBrowserLogin(driver, wait);
+			testBrowserPanier(driver, wait);
+			testBrowserAchat(driver, wait);
+			testBrowserCrudFormulaire(driver, wait);
+		} finally {
+			driver.quit();
+		}
+	}
+
+	/**
+	 * Teste la connexion via formulaire dans le navigateur.
+	 * @param driver WebDriver
+	 * @param wait WebDriverWait
+	 * @throws Exception En cas d erreur
+	 */
+	/**
+	 * Pose le cookie admin dans le navigateur Selenium.
+	 * @param driver WebDriver
+	 * @param wait WebDriverWait
+	 * @throws Exception En cas d erreur
+	 */
+	private void setBrowserCookie(WebDriver driver, WebDriverWait wait) throws Exception {
+		driver.get(BASE + "/plants");
+		wait.until(ExpectedConditions.presenceOfElementLocated(By.className("card")));
+		apiCall("POST", "/auth/login", new JSONObject().put("email", ADMIN_EMAIL).put("password", ADMIN_PWD), "browser");
+		String cookieValue = cookies.get("browser");
+		String token = cookieValue.contains("=") ? cookieValue.split("=", 2)[1] : cookieValue;
+		((org.openqa.selenium.JavascriptExecutor) driver).executeScript("document.cookie = 'ps_play_token=" + token + "; path=/'");
+	}
+
+	private void testBrowserLogin(WebDriver driver, WebDriverWait wait) throws Exception {
+		setBrowserCookie(driver, wait);
+		driver.get(BASE + "/plants");
+		wait.until(ExpectedConditions.presenceOfElementLocated(By.className("card")));
+		System.out.println("✅   ↳ Login admin via API + cookie Selenium");
+		String navText = driver.findElement(By.tagName("nav")).getText();
+		assertBrowser(navText.contains("Admin"), "Dropdown Admin visible apres login");
+		driver.get(BASE + "/auth/logout");
+		wait.until(ExpectedConditions.presenceOfElementLocated(By.className("card")));
+		String navAfter = driver.findElement(By.tagName("nav")).getText();
+		assertBrowser(navAfter.contains("connecter"), "Deconnexion fonctionne");
+	}
+
+	/**
+	 * Teste le panier dans le navigateur.
+	 * @param driver WebDriver
+	 * @param wait WebDriverWait
+	 * @throws Exception En cas d erreur
+	 */
+	private void testBrowserPanier(WebDriver driver, WebDriverWait wait) throws Exception {
+		driver.get(BASE + "/plants");
+		wait.until(ExpectedConditions.presenceOfElementLocated(By.className("card")));
+		List<WebElement> addButtons = driver.findElements(By.cssSelector("[onclick*=addToCart]"));
+		addButtons.get(0).click();
+		Thread.sleep(500);
+		addButtons.get(1).click();
+		Thread.sleep(500);
+		String cartLink = driver.findElement(By.id("cart-link")).getText();
+		assertBrowser(cartLink.contains("2"), "Compteur panier = 2");
+		driver.get(BASE + "/cart");
+		wait.until(ExpectedConditions.presenceOfElementLocated(By.tagName("table")));
+		List<WebElement> rows = driver.findElements(By.cssSelector("table tbody tr"));
+		assertBrowser(rows.size() == 2, "2 items dans le panier");
+		driver.findElement(By.xpath("//button[contains(text(),'Vider')]")).click();
+		Thread.sleep(500);
+		String bodyText = driver.findElement(By.tagName("body")).getText();
+		assertBrowser(bodyText.contains("vide"), "Panier vide apres vidage");
+	}
+
+	/**
+	 * Teste l achat complet dans le navigateur.
+	 * @param driver WebDriver
+	 * @param wait WebDriverWait
+	 * @throws Exception En cas d erreur
+	 */
+	private void testBrowserAchat(WebDriver driver, WebDriverWait wait) throws Exception {
+		setBrowserCookie(driver, wait);
+		driver.get(BASE + "/plants");
+		wait.until(ExpectedConditions.presenceOfElementLocated(By.className("card")));
+		driver.findElements(By.cssSelector("[onclick*=addToCart]")).get(0).click();
+		Thread.sleep(500);
+		driver.get(BASE + "/orders/new");
+		wait.until(ExpectedConditions.presenceOfElementLocated(By.id("confirm-order-btn")));
+		wait.until(ExpectedConditions.presenceOfElementLocated(By.tagName("table")));
+		System.out.println("✅   ↳ Recapitulatif commande avec tableau");
+		driver.findElement(By.id("confirm-order-btn")).click();
+		wait.until(ExpectedConditions.urlContains("/orders"));
+		System.out.println("✅   ↳ Commande passee, redirige vers /orders");
+	}
+
+	/**
+	 * Teste la creation d une plante via formulaire dans le navigateur.
+	 * @param driver WebDriver
+	 * @param wait WebDriverWait
+	 * @throws Exception En cas d erreur
+	 */
+	private void testBrowserCrudFormulaire(WebDriver driver, WebDriverWait wait) throws Exception {
+		setBrowserCookie(driver, wait);
+		driver.get(BASE + "/admin/plants/new");
+		wait.until(ExpectedConditions.presenceOfElementLocated(By.id("plant-form")));
+		driver.findElement(By.id("plant-name")).sendKeys("Plante Selenium Test");
+		driver.findElement(By.id("plant-description")).sendKeys("Test Selenium");
+		driver.findElement(By.id("plant-price")).sendKeys("33");
+		driver.findElement(By.id("plant-stock")).sendKeys("5");
+		driver.findElement(By.cssSelector("button[type=submit]")).click();
+		wait.until(ExpectedConditions.urlContains("/admin/plants"));
+		String pageText = driver.findElement(By.tagName("body")).getText();
+		assertBrowser(pageText.contains("Plante Selenium Test"), "Plante creee via formulaire visible");
+	}
+
+	/**
+	 * Assertion pour les tests navigateur.
+	 * @param condition Condition a verifier
+	 * @param label Description
+	 */
+	private void assertBrowser(boolean condition, String label) {
+		System.out.printf("%s   ↳ %s%n", condition ? "✅" : "❌", label);
+		if (!condition) throw new RuntimeException("Test navigateur echoue : " + label);
+	}
+
 	// ==========================================================================
 	// Main
 	// ==========================================================================
@@ -439,6 +627,7 @@ public final class E2EFrontend {
 			test.testDeconnexion();
 			test.testAdmin();
 			test.testZeroErreur();
+			test.runBrowserTests();
 			System.out.println("\n🎉 Tous les tests frontend ont reussi!");
 			System.exit(0);
 		} catch (Exception testException) {
