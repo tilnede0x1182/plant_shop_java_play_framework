@@ -170,6 +170,40 @@ public class PagesController extends Controller {
 		return ok(views.html.users.profile.render(target, toScalaOption(userOpt)));
 	}
 
+	/**
+	 *	Page modification du profil.
+	 *	GET /users/:id/edit
+	 *
+	 *	@param request Requete HTTP
+	 *	@param userId Identifiant utilisateur
+	 *	@return Page HTML ou redirection
+	 */
+	public Result editProfile(Http.Request request, Long userId) {
+		Optional<User> userOpt = AuthAction.getUserFromRequest(request);
+		if (userOpt.isEmpty()) return redirectFound("/auth/signin");
+		if (!userOpt.get().getId().equals(userId) && !userOpt.get().isAdmin()) {
+			return redirectFound("/plants");
+		}
+		User target = User.find.byId(userId);
+		if (target == null) return notFound("Utilisateur introuvable");
+		return ok(views.html.users.edit.render(target, toScalaOption(userOpt)));
+	}
+
+	// --------------------------------------------------------------------------
+	// Deconnexion
+	// --------------------------------------------------------------------------
+
+	/**
+	 *	Deconnecte l utilisateur via l API et redirige.
+	 *	GET /auth/logout
+	 *
+	 *	@return Redirection 302 vers /plants avec cookie efface
+	 */
+	public Result logout() {
+		return Results.found("/plants")
+			.withCookies(AuthAction.clearCookie());
+	}
+
 	// --------------------------------------------------------------------------
 	// Pages admin
 	// --------------------------------------------------------------------------
@@ -190,6 +224,37 @@ public class PagesController extends Controller {
 	}
 
 	/**
+	 *	Page creation d une nouvelle plante (admin).
+	 *	GET /admin/plants/new
+	 *
+	 *	@param request Requete HTTP
+	 *	@return Page HTML ou redirection
+	 */
+	public Result newPlant(Http.Request request) {
+		Optional<User> userOpt = AuthAction.getUserFromRequest(request);
+		if (userOpt.isEmpty()) return redirectFound("/auth/signin");
+		if (!userOpt.get().isAdmin()) return redirectFound("/plants");
+		return ok(views.html.admin.plants.newPlant.render(toScalaOption(userOpt)));
+	}
+
+	/**
+	 *	Page modification d une plante (admin).
+	 *	GET /admin/plants/:id/edit
+	 *
+	 *	@param request Requete HTTP
+	 *	@param plantId Identifiant de la plante
+	 *	@return Page HTML ou redirection
+	 */
+	public Result editPlant(Http.Request request, Long plantId) {
+		Optional<User> userOpt = AuthAction.getUserFromRequest(request);
+		if (userOpt.isEmpty()) return redirectFound("/auth/signin");
+		if (!userOpt.get().isAdmin()) return redirectFound("/plants");
+		Plant plant = Plant.find.byId(plantId);
+		if (plant == null) return notFound("Plante introuvable");
+		return ok(views.html.admin.plants.edit.render(plant, toScalaOption(userOpt)));
+	}
+
+	/**
 	 *	Gestion des utilisateurs (admin).
 	 *	GET /admin/users
 	 *
@@ -202,5 +267,22 @@ public class PagesController extends Controller {
 		if (!userOpt.get().isAdmin()) return redirectFound("/plants");
 		List<User> userList = User.find.query().orderBy("is_admin desc, name").findList();
 		return ok(views.html.admin.users.index.render(userList, toScalaOption(userOpt)));
+	}
+
+	/**
+	 *	Page modification d un utilisateur (admin).
+	 *	GET /admin/users/:id/edit
+	 *
+	 *	@param request Requete HTTP
+	 *	@param userId Identifiant utilisateur
+	 *	@return Page HTML ou redirection
+	 */
+	public Result editUser(Http.Request request, Long userId) {
+		Optional<User> userOpt = AuthAction.getUserFromRequest(request);
+		if (userOpt.isEmpty()) return redirectFound("/auth/signin");
+		if (!userOpt.get().isAdmin()) return redirectFound("/plants");
+		User target = User.find.byId(userId);
+		if (target == null) return notFound("Utilisateur introuvable");
+		return ok(views.html.admin.users.edit.render(target, toScalaOption(userOpt)));
 	}
 }

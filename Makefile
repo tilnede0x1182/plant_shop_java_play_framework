@@ -3,7 +3,9 @@
 # ======================================================
 
 run:
-	sbt "run 4500"
+	sbt stage
+	rm -f target/universal/stage/RUNNING_PID
+	target/universal/stage/bin/plant_shop_play_framework -Dhttp.port=4500
 
 compile:
 	sbt compile
@@ -11,7 +13,9 @@ compile:
 compile_run: compile run
 
 prod:
-	sbt "start -Dhttp.port=4500"
+	sbt dist
+	cd target/universal && unzip -o plant_shop_play_framework-1.0-SNAPSHOT.zip
+	target/universal/plant_shop_play_framework-1.0-SNAPSHOT/bin/plant_shop_play_framework -Dhttp.port=4500
 
 # ======================================================
 # 🌱 Seed

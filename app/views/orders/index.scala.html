@@ -1,30 +1,29 @@
 @(orders: java.util.List[models.Order], user: Option[models.User])
 
 @views.html.main("Mes Commandes", user) {
-	<h1 class="text-center mb-4">Mes Commandes</h1>
+	<h1 class="text-center mb-4">&#128220; Mes Commandes</h1>
 
 	@if(orders.isEmpty()) {
-		<div class="alert alert-info">Aucune commande.</div>
+		<div class="alert alert-info">Aucune commande pour le moment.</div>
 	} else {
-		<table class="table shadow">
-			<thead class="table-light">
-				<tr>
-					<th>#</th>
-					<th>Total</th>
-					<th>Statut</th>
-					<th>Date</th>
-				</tr>
-			</thead>
-			<tbody>
-				@for(order <- orders) {
-					<tr>
-						<td>@order.getId()</td>
-						<td>@order.getTotal() &euro;</td>
-						<td>@order.getStatus()</td>
-						<td>@order.getCreatedAt()</td>
-					</tr>
-				}
-			</tbody>
-		</table>
+		@for((order, index) <- orders.zipWithIndex) {
+			<div class="card mb-3 shadow-sm">
+				<div class="card-body">
+					<h5 class="card-title">Commande n&deg;@{orders.size() - index}</h5>
+					<p class="mb-1 text-muted">Pass&eacute;e le @order.getCreatedAt() &ndash; Total : @order.getTotal() &euro;</p>
+					<ul class="mb-2">
+						@for(item <- order.getOrderItems()) {
+							@if(item.getPlant() != null) {
+								<li>
+									<a href="/plants/@item.getPlant().getId()" class="text-decoration-none text-primary">@item.getPlant().getName()</a>
+									@item.getQuantity() &times; @item.getPlant().getPrice() &euro;
+								</li>
+							}
+						}
+					</ul>
+					<p><strong>Statut :</strong> @order.getStatus()</p>
+				</div>
+			</div>
+		}
 	}
 }

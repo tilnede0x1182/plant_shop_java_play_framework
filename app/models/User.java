@@ -70,6 +70,28 @@ public class User extends Model {
 	public String getName() { return name; }
 
 	/**
+	 *	Retourne le nom avec chaque mot capitalise.
+	 *	Exception : "de" reste en minuscule sauf en premiere position.
+	 *
+	 *	@return Nom capitalise
+	 */
+	public String getCapitalizedName() {
+		if (name == null || name.isEmpty()) return "";
+		String[] words = name.split(" ");
+		StringBuilder result = new StringBuilder();
+		for (int idx = 0; idx < words.length; idx++) {
+			String lower = words[idx].toLowerCase();
+			if (idx > 0 && lower.equals("de")) {
+				result.append("de");
+			} else {
+				result.append(Character.toUpperCase(lower.charAt(0))).append(lower.substring(1));
+			}
+			if (idx < words.length - 1) result.append(" ");
+		}
+		return result.toString();
+	}
+
+	/**
 	 *	@return Hash du mot de passe
 	 */
 	public String getPasswordHash() { return passwordHash; }

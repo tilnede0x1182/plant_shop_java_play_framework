@@ -1,0 +1,18 @@
+@(target: models.User, user: Option[models.User])
+
+@views.html.main("Modifier mon profil", user) {
+	<h1>Modifier mon profil</h1>
+	<div id="flash-error" class="alert alert-danger d-none"></div>
+	<form id="profile-edit-form" data-id="@target.getId()">
+		<div class="mb-3">
+			<label class="form-label">Nom</label>
+			<input type="text" class="form-control" id="profile-name" value="@target.getName()" required>
+		</div>
+		<div class="mb-3">
+			<label class="form-label">Email</label>
+			<input type="email" class="form-control" id="profile-email" value="@target.getEmail()" required>
+		</div>
+		<button type="submit" class="btn btn-primary">Enregistrer</button>
+		<a href="/users/@target.getId()" class="btn btn-secondary ms-2">Annuler</a>
+	</form>
+}

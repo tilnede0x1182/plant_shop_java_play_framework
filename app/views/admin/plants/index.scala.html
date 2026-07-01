@@ -15,7 +15,7 @@
 		<tbody>
 			@for(plant <- plants) {
 				<tr>
-					<td><a href="/plants/@plant.getId()">@plant.getName()</a></td>
+					<td><a href="/plants/@plant.getId()" class="text-body text-decoration-none">@plant.getName()</a></td>
 					<td>@plant.getPrice() &euro;</td>
 					<td>@plant.getStock()</td>
 					<td>

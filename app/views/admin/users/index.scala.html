@@ -14,7 +14,7 @@
 		<tbody>
 			@for(targetUser <- users) {
 				<tr>
-					<td>@targetUser.getName()</td>
+					<td><a href="/users/@targetUser.getId()" class="text-body text-decoration-none">@targetUser.getName()</a></td>
 					<td>@targetUser.getEmail()</td>
 					<td>@if(targetUser.isAdmin()){Admin}else{User}</td>
 					<td>

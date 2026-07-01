@@ -11,6 +11,36 @@ const DEBOUNCE_DELAY = 300;
 // ==============================================================================
 
 // ------------------------------------------------------------------------------
+// Capitalisation
+// ------------------------------------------------------------------------------
+
+/**
+ *	Capitalise chaque mot d une chaine.
+ *	Exception : "de" reste en minuscule sauf en premiere position.
+ *
+ *	@param str Chaine a capitaliser
+ *	@return Chaine capitalisee
+ */
+function capitalize(str) {
+	if (!str) return "";
+	return str.split(" ").map(function(word, index) {
+		const lower = word.toLowerCase();
+		if (index > 0 && lower === "de") return lower;
+		return lower.charAt(0).toUpperCase() + lower.slice(1);
+	}).join(" ");
+}
+
+/**
+ *	Applique la capitalisation au nom affiche dans la navbar.
+ */
+function capitalizeDisplayName() {
+	const nameElement = document.getElementById("user-display-name");
+	if (nameElement) {
+		nameElement.textContent = capitalize(nameElement.textContent);
+	}
+}
+
+// ------------------------------------------------------------------------------
 // LocalStorage
 // ------------------------------------------------------------------------------
 
@@ -308,16 +338,337 @@ function renderCartFooter(container, cart) {
 	container.appendChild(footer);
 }
 
+// ------------------------------------------------------------------------------
+// Auth - Login
+// ------------------------------------------------------------------------------
+
+/**
+ *	Gere la soumission du formulaire de connexion.
+ *	POST /api/auth/login avec email et password.
+ */
+function initLoginForm() {
+	const form = document.getElementById("login-form");
+	if (!form) return;
+	form.addEventListener("submit", async function(submitEvent) {
+		submitEvent.preventDefault();
+		const email = document.getElementById("login-email").value;
+		const password = document.getElementById("login-password").value;
+		try {
+			const response = await fetch("/api/auth/login", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ email: email, password: password }),
+			});
+			if (response.status === 201) {
+				window.location.href = "/plants";
+			} else {
+				showFlashError("Identifiants invalides");
+			}
+		} catch (fetchError) {
+			showFlashError("Erreur de connexion");
+		}
+	});
+}
+
+// ------------------------------------------------------------------------------
+// Auth - Register
+// ------------------------------------------------------------------------------
+
+/**
+ *	Gere la soumission du formulaire d inscription.
+ *	POST /api/auth/register avec name, email et password.
+ */
+function initRegisterForm() {
+	const form = document.getElementById("register-form");
+	if (!form) return;
+	form.addEventListener("submit", async function(submitEvent) {
+		submitEvent.preventDefault();
+		const name = document.getElementById("register-name").value;
+		const email = document.getElementById("register-email").value;
+		const password = document.getElementById("register-password").value;
+		try {
+			const response = await fetch("/api/auth/register", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ name: name, email: email, password: password }),
+			});
+			if (response.status === 201) {
+				window.location.href = "/plants";
+			} else {
+				showFlashError("Email deja utilise");
+			}
+		} catch (fetchError) {
+			showFlashError("Erreur lors de l inscription");
+		}
+	});
+}
+
+// ------------------------------------------------------------------------------
+// Auth - Flash messages
+// ------------------------------------------------------------------------------
+
+/**
+ *	Affiche un message d erreur dans le flash-error.
+ *
+ *	@param message Texte de l erreur
+ */
+function showFlashError(message) {
+	const flashDiv = document.getElementById("flash-error");
+	if (!flashDiv) return;
+	flashDiv.textContent = message;
+	flashDiv.classList.remove("d-none");
+}
+
+// ------------------------------------------------------------------------------
+// Commande
+// ------------------------------------------------------------------------------
+
+/**
+ *	Gere la confirmation de commande.
+ *	POST /api/orders avec les items du panier.
+ */
+/**
+ *	Affiche le recapitulatif de commande depuis le panier localStorage.
+ */
+function renderOrderReview() {
+	const container = document.getElementById("order-review-container");
+	if (!container) return;
+	const cart = loadCart();
+	const items = Object.values(cart);
+	if (items.length === 0) {
+		container.innerHTML = '<div class="alert alert-info">Votre panier est vide.</div>';
+		const confirmBtn = document.getElementById("confirm-order-btn");
+		if (confirmBtn) confirmBtn.style.display = "none";
+		return;
+	}
+	renderOrderTable(container, items);
+}
+
+/**
+ *	Construit le tableau recapitulatif de commande.
+ *
+ *	@param container Element DOM conteneur
+ *	@param items Tableau des items du panier
+ */
+function renderOrderTable(container, items) {
+	const table = document.createElement("table");
+	table.className = "table shadow";
+	table.innerHTML = '<thead class="table-light"><tr><th>Plante</th><th>Quantité</th><th>Total</th></tr></thead>';
+	const tbody = document.createElement("tbody");
+	let total = 0;
+	for (const item of items) {
+		const row = document.createElement("tr");
+		row.innerHTML = '<td>' + item.name + '</td><td>' + item.quantity + '</td><td>' + (item.price * item.quantity) + ' €</td>';
+		tbody.appendChild(row);
+		total += item.price * item.quantity;
+	}
+	table.appendChild(tbody);
+	container.appendChild(table);
+	const totalParagraph = document.createElement("p");
+	totalParagraph.className = "fw-bold text-end";
+	totalParagraph.textContent = "Total : " + total + " €";
+	container.appendChild(totalParagraph);
+}
+
+function initConfirmOrder() {
+	const button = document.getElementById("confirm-order-btn");
+	if (!button) return;
+	button.addEventListener("click", async function() {
+		const cart = loadCart();
+		const items = Object.values(cart).map(function(item) {
+			return { plant_id: item.id, quantity: item.quantity };
+		});
+		if (items.length === 0) return;
+		try {
+			const response = await fetch("/api/orders", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ items: items }),
+			});
+			if (response.status === 201) {
+				localStorage.removeItem(STORAGE_KEY);
+				window.dispatchEvent(new Event("cart-updated"));
+				window.location.href = "/orders";
+			} else {
+				showFlashError("Erreur lors de la commande");
+			}
+		} catch (fetchError) {
+			showFlashError("Erreur de connexion");
+		}
+	});
+}
+
+// ------------------------------------------------------------------------------
+// Admin - CRUD Plantes
+// ------------------------------------------------------------------------------
+
+/**
+ *	Gere la creation d une nouvelle plante.
+ *	#plant-form -> POST /api/admin/plants
+ */
+function initPlantForm() {
+	const form = document.getElementById("plant-form");
+	if (!form) return;
+	form.addEventListener("submit", async function(submitEvent) {
+		submitEvent.preventDefault();
+		const body = {
+			name: document.getElementById("plant-name").value,
+			description: document.getElementById("plant-description").value,
+			price: parseFloat(document.getElementById("plant-price").value),
+			stock: parseInt(document.getElementById("plant-stock").value),
+		};
+		try {
+			const response = await fetch("/api/admin/plants", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(body),
+			});
+			if (response.status === 201) { window.location.href = "/admin/plants"; }
+			else { showFlashError("Erreur lors de la creation"); }
+		} catch (fetchError) { showFlashError("Erreur de connexion"); }
+	});
+}
+
+/**
+ *	Gere la modification d une plante.
+ *	#plant-edit-form -> PATCH /api/admin/plants/:id
+ */
+function initPlantEditForm() {
+	const form = document.getElementById("plant-edit-form");
+	if (!form) return;
+	const plantId = form.dataset.id;
+	form.addEventListener("submit", async function(submitEvent) {
+		submitEvent.preventDefault();
+		const body = {
+			name: document.getElementById("plant-name").value,
+			description: document.getElementById("plant-description").value,
+			price: parseFloat(document.getElementById("plant-price").value),
+			stock: parseInt(document.getElementById("plant-stock").value),
+		};
+		try {
+			const response = await fetch("/api/admin/plants/" + plantId, {
+				method: "PATCH",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(body),
+			});
+			if (response.ok) { window.location.href = "/admin/plants"; }
+			else { showFlashError("Erreur lors de la modification"); }
+		} catch (fetchError) { showFlashError("Erreur de connexion"); }
+	});
+}
+
+/**
+ *	Supprime une plante apres confirmation.
+ *	DELETE /api/admin/plants/:id
+ *
+ *	@param plantId Identifiant de la plante
+ */
+function deletePlant(plantId) {
+	if (!confirm("Supprimer cette plante ?")) return;
+	fetch("/api/admin/plants/" + plantId, { method: "DELETE" })
+		.then(function(response) {
+			if (response.ok) { window.location.href = "/admin/plants"; }
+			else { showFlashError("Erreur lors de la suppression"); }
+		})
+		.catch(function() { showFlashError("Erreur de connexion"); });
+}
+
+// ------------------------------------------------------------------------------
+// Admin - CRUD Utilisateurs
+// ------------------------------------------------------------------------------
+
+/**
+ *	Gere la modification d un utilisateur.
+ *	#user-edit-form -> PATCH /api/admin/users/:id
+ */
+function initUserEditForm() {
+	const form = document.getElementById("user-edit-form");
+	if (!form) return;
+	const userId = form.dataset.id;
+	form.addEventListener("submit", async function(submitEvent) {
+		submitEvent.preventDefault();
+		const body = {
+			name: document.getElementById("user-name").value,
+			email: document.getElementById("user-email").value,
+			admin: document.getElementById("user-admin").checked,
+		};
+		try {
+			const response = await fetch("/api/admin/users/" + userId, {
+				method: "PATCH",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(body),
+			});
+			if (response.ok) { window.location.href = "/admin/users"; }
+			else { showFlashError("Erreur lors de la modification"); }
+		} catch (fetchError) { showFlashError("Erreur de connexion"); }
+	});
+}
+
+/**
+ *	Supprime un utilisateur apres confirmation.
+ *	DELETE /api/admin/users/:id
+ *
+ *	@param userId Identifiant de l utilisateur
+ */
+function deleteUser(userId) {
+	if (!confirm("Supprimer cet utilisateur ?")) return;
+	fetch("/api/admin/users/" + userId, { method: "DELETE" })
+		.then(function(response) {
+			if (response.ok) { window.location.href = "/admin/users"; }
+			else { showFlashError("Erreur lors de la suppression"); }
+		})
+		.catch(function() { showFlashError("Erreur de connexion"); });
+}
+
+// ------------------------------------------------------------------------------
+// Profil utilisateur
+// ------------------------------------------------------------------------------
+
+/**
+ *	Gere la modification du profil utilisateur.
+ *	#profile-edit-form -> PATCH /api/users/:id
+ */
+function initProfileEditForm() {
+	const form = document.getElementById("profile-edit-form");
+	if (!form) return;
+	const userId = form.dataset.id;
+	form.addEventListener("submit", async function(submitEvent) {
+		submitEvent.preventDefault();
+		const body = {
+			name: document.getElementById("profile-name").value,
+			email: document.getElementById("profile-email").value,
+		};
+		try {
+			const response = await fetch("/api/users/" + userId, {
+				method: "PATCH",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(body),
+			});
+			if (response.ok) { window.location.href = "/users/" + userId; }
+			else { showFlashError("Erreur lors de la modification"); }
+		} catch (fetchError) { showFlashError("Erreur de connexion"); }
+	});
+}
+
 // ==============================================================================
 // Main
 // ==============================================================================
 
 /**
- *	Initialise le panier au chargement de la page.
+ *	Initialise tous les handlers au chargement de la page.
  */
 function main() {
+	capitalizeDisplayName();
 	updateNavbarCount();
 	renderCart();
+	renderOrderReview();
+	initLoginForm();
+	initRegisterForm();
+	initConfirmOrder();
+	initPlantForm();
+	initPlantEditForm();
+	initUserEditForm();
+	initProfileEditForm();
 	window.addEventListener("cart-updated", updateNavbarCount);
 	window.addEventListener("storage", updateNavbarCount);
 }
@@ -326,4 +677,8 @@ function main() {
 // Lancement du programme
 // ==============================================================================
 
-document.addEventListener("DOMContentLoaded", main);
+if (document.readyState === "loading") {
+	document.addEventListener("DOMContentLoaded", main);
+} else {
+	main();
+}

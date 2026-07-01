@@ -15,6 +15,7 @@
 		</button>
 		@if(user.isDefined && user.get.isAdmin()) {
 			<a href="/admin/plants/@plant.getId()/edit" class="btn btn-warning">Modifier</a>
+			<button class="btn btn-danger" onclick="deletePlant(@plant.getId())">Supprimer</button>
 		}
 		<a href="/plants" class="btn btn-secondary">Retour</a>
 	</div>

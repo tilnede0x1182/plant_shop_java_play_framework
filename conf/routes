@@ -53,11 +53,16 @@ GET     /plants/:id                 controllers.PagesController.plantShow(reques
 GET     /cart                       controllers.PagesController.cart(request: Request)
 GET     /auth/signin                controllers.PagesController.signin()
 GET     /auth/register              controllers.PagesController.register()
+GET     /auth/logout                controllers.PagesController.logout()
 GET     /orders                     controllers.PagesController.orders(request: Request)
 GET     /orders/new                 controllers.PagesController.newOrder(request: Request)
 GET     /users/:id                  controllers.PagesController.userProfile(request: Request, id: Long)
+GET     /users/:id/edit             controllers.PagesController.editProfile(request: Request, id: Long)
 GET     /admin/plants               controllers.PagesController.adminPlants(request: Request)
+GET     /admin/plants/new           controllers.PagesController.newPlant(request: Request)
+GET     /admin/plants/:id/edit      controllers.PagesController.editPlant(request: Request, id: Long)
 GET     /admin/users                controllers.PagesController.adminUsers(request: Request)
+GET     /admin/users/:id/edit       controllers.PagesController.editUser(request: Request, id: Long)
 
 # ---- Assets ----
 GET     /assets/*file               controllers.Assets.versioned(path="/public", file: Asset)

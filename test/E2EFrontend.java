@@ -95,6 +95,29 @@ public final class E2EFrontend {
 	// --------------------------------------------------------------------------
 
 	/**
+	 * Appel API JSON generique avec gestion cookies.
+	 * @param method Methode HTTP
+	 * @param path Chemin API (ex: /auth/login)
+	 * @param body Corps JSON ou null
+	 * @param who Identifiant session
+	 * @return Code HTTP de la reponse
+	 * @throws Exception En cas d erreur
+	 */
+	private int apiCall(String method, String path, JSONObject body, String who) throws Exception {
+		HttpRequest.Builder builder = HttpRequest.newBuilder().uri(URI.create(API + path));
+		if (body != null) {
+			builder.method(method, HttpRequest.BodyPublishers.ofString(body.toString()));
+			builder.header("Content-Type", "application/json");
+		} else {
+			builder.method(method, HttpRequest.BodyPublishers.noBody());
+		}
+		if (cookies.get(who) != null) builder.header("Cookie", cookies.get(who));
+		HttpResponse<String> response = HttpClient.newBuilder().build().send(builder.build(), HttpResponse.BodyHandlers.ofString());
+		storeCookies(response, who);
+		return response.statusCode();
+	}
+
+	/**
 	 * Login via API JSON et stocke le cookie.
 	 * @param email Adresse email
 	 * @param password Mot de passe
@@ -102,14 +125,8 @@ public final class E2EFrontend {
 	 * @throws Exception En cas d erreur
 	 */
 	private void loginApi(String email, String password, String who) throws Exception {
-		JSONObject body = new JSONObject().put("email", email).put("password", password);
-		HttpRequest request = HttpRequest.newBuilder()
-				.uri(URI.create(API + "/auth/login"))
-				.POST(HttpRequest.BodyPublishers.ofString(body.toString()))
-				.header("Content-Type", "application/json").build();
-		HttpResponse<String> response = HttpClient.newBuilder().build().send(request, HttpResponse.BodyHandlers.ofString());
-		storeCookies(response, who);
-		System.out.printf("✅ Login API %s [%d]%n", who, response.statusCode());
+		int code = apiCall("POST", "/auth/login", new JSONObject().put("email", email).put("password", password), who);
+		System.out.printf("✅ Login API %s [%d]%n", who, code);
 	}
 
 	/**
@@ -220,6 +237,14 @@ public final class E2EFrontend {
 		System.out.println("✅   ↳ /orders redirige (302)");
 		expectCode("/admin/plants", 302, "anon");
 		System.out.println("✅   ↳ /admin/plants redirige (302)");
+		expectCode("/admin/plants/new", 302, "anon");
+		System.out.println("✅   ↳ /admin/plants/new redirige (302)");
+		expectCode("/admin/users", 302, "anon");
+		System.out.println("✅   ↳ /admin/users redirige (302)");
+		expectCode("/users/1", 302, "anon");
+		System.out.println("✅   ↳ /users/1 redirige (302)");
+		expectCode("/users/1/edit", 302, "anon");
+		System.out.println("✅   ↳ /users/1/edit redirige (302)");
 	}
 
 	// --------------------------------------------------------------------------
@@ -234,14 +259,8 @@ public final class E2EFrontend {
 	 * @throws Exception En cas d erreur
 	 */
 	private void registerApi(String email, String password, String who) throws Exception {
-		JSONObject body = new JSONObject().put("email", email).put("password", password).put("name", "Test User");
-		HttpRequest request = HttpRequest.newBuilder()
-				.uri(URI.create(API + "/auth/register"))
-				.POST(HttpRequest.BodyPublishers.ofString(body.toString()))
-				.header("Content-Type", "application/json").build();
-		HttpResponse<String> response = HttpClient.newBuilder().build().send(request, HttpResponse.BodyHandlers.ofString());
-		storeCookies(response, who);
-		System.out.printf("✅ Register API %s [%d]%n", who, response.statusCode());
+		int code = apiCall("POST", "/auth/register", new JSONObject().put("email", email).put("password", password).put("name", "Test User"), who);
+		System.out.printf("✅ Register API %s [%d]%n", who, code);
 	}
 
 	/**
@@ -250,16 +269,65 @@ public final class E2EFrontend {
 	 */
 	private void testUtilisateur() throws Exception {
 		System.out.println("\n📌 TEST FRONTEND: UTILISATEUR CONNECTE");
-		String userEmail = "frontend_test_" + System.currentTimeMillis() + "@example.com";
-		registerApi(userEmail, "pass123", "user");
-		loginApi(userEmail, "pass123", "user");
+		loginApi("jules_roux78@yahoo.com", "pw859901368", "user");
 		Document plantes = getPage("/plants", "user");
 		assertText(plantes, "PlantShop", "Page plantes accessible");
 		Document orders = getPage("/orders", "user");
-		assertExists(orders, "body", "Page orders accessible");
-		System.out.println("✅   ↳ /orders accessible (200)");
+		assertExists(orders, ".card", "Page orders avec cards");
+		assertText(orders, "Statut", "Statut visible dans les commandes");
+		System.out.println("✅   ↳ /orders accessible avec cards et statut");
 		expectCode("/admin/plants", 302, "user");
 		System.out.println("✅   ↳ /admin/plants redirige pour non-admin");
+		expectCode("/admin/users", 302, "user");
+		System.out.println("✅   ↳ /admin/users redirige pour non-admin");
+		expectCode("/admin/plants/new", 302, "user");
+		System.out.println("✅   ↳ /admin/plants/new redirige pour non-admin");
+		expectCode("/admin/plants/1/edit", 302, "user");
+		System.out.println("✅   ↳ /admin/plants/1/edit redirige pour non-admin");
+		expectCode("/admin/users/1/edit", 302, "user");
+		System.out.println("✅   ↳ /admin/users/1/edit redirige pour non-admin");
+		Document profile = getPage("/users/4", "user");
+		assertText(profile, "jules_roux78", "Email visible dans le profil");
+		System.out.println("✅   ↳ /users/:id profil accessible avec email");
+		Document editProfile = getPage("/users/4/edit", "user");
+		assertExists(editProfile, "form#profile-edit-form", "Formulaire modifier profil");
+		System.out.println("✅   ↳ /users/:id/edit formulaire present");
+		apiCall("PATCH", "/users/4", new JSONObject().put("name", "Jules Test Modifie"), "user");
+		Document profileUpdated = getPage("/users/4", "user");
+		assertText(profileUpdated, "Jules Test Modifie", "Nom modifie visible");
+		System.out.println("✅   ↳ Profil modifie avec succes");
+		apiCall("PATCH", "/users/4", new JSONObject().put("name", "Jules Roux"), "user");
+	}
+
+	/**
+	 * Teste la deconnexion.
+	 * @throws Exception En cas d erreur
+	 */
+	private void testDeconnexion() throws Exception {
+		System.out.println("\n📌 TEST FRONTEND: DECONNEXION");
+		loginApi(ADMIN_EMAIL, ADMIN_PWD, "deconnexion");
+		getPage("/orders", "deconnexion");
+		System.out.println("✅   ↳ /orders accessible avant deconnexion");
+		logoutViaPage("deconnexion");
+		expectCode("/orders", 302, "deconnexion");
+		System.out.println("✅   ↳ /orders redirige apres deconnexion");
+	}
+
+	/**
+	 * Deconnexion via la page /auth/logout sans suivre la redirection.
+	 * Capture le Set-Cookie qui efface le token.
+	 * @param who Identifiant session
+	 * @throws Exception En cas d erreur
+	 */
+	private void logoutViaPage(String who) throws Exception {
+		HttpRequest.Builder builder = HttpRequest.newBuilder().uri(URI.create(BASE + "/auth/logout")).GET();
+		if (cookies.get(who) != null) builder.header("Cookie", cookies.get(who));
+		HttpResponse<String> response = HttpClient.newBuilder()
+				.followRedirects(HttpClient.Redirect.NEVER).build()
+				.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+		storeCookies(response, who);
+		cookies.put(who, "");
+		System.out.println("✅   ↳ Deconnexion effectuee [" + response.statusCode() + "]");
 	}
 
 	// --------------------------------------------------------------------------
@@ -275,12 +343,57 @@ public final class E2EFrontend {
 		loginApi(ADMIN_EMAIL, ADMIN_PWD, "admin");
 		Document plantes = getPage("/plants", "admin");
 		assertText(plantes, "Admin", "Dropdown Admin visible");
+		assertText(plantes, "Administrateur", "Label Administrateur visible");
+		Document showPlant = getPage("/plants/1", "admin");
+		assertExists(showPlant, "button[onclick*=deletePlant]", "Bouton supprimer plante (admin)");
+		System.out.println("✅   ↳ Bouton supprimer visible sur page plante");
 		Document adminPlants = getPage("/admin/plants", "admin");
-		assertExists(adminPlants, "body", "Page admin plantes");
-		System.out.println("✅   ↳ /admin/plants accessible (200)");
+		assertExists(adminPlants, "a.text-decoration-none", "Liens plantes avec CSS propre");
+		System.out.println("✅   ↳ /admin/plants liens CSS corrects");
 		Document adminUsers = getPage("/admin/users", "admin");
-		assertExists(adminUsers, "body", "Page admin users");
-		System.out.println("✅   ↳ /admin/users accessible (200)");
+		assertExists(adminUsers, "a.text-decoration-none", "Liens utilisateurs avec CSS propre");
+		System.out.println("✅   ↳ /admin/users liens CSS corrects");
+		Document newPlant = getPage("/admin/plants/new", "admin");
+		assertExists(newPlant, "form", "Formulaire nouvelle plante");
+		System.out.println("✅   ↳ /admin/plants/new accessible (200)");
+		Document editPlant = getPage("/admin/plants/1/edit", "admin");
+		assertExists(editPlant, "form", "Formulaire modifier plante");
+		System.out.println("✅   ↳ /admin/plants/1/edit accessible (200)");
+		Document editUser = getPage("/admin/users/1/edit", "admin");
+		assertExists(editUser, "form", "Formulaire modifier utilisateur");
+		System.out.println("✅   ↳ /admin/users/1/edit accessible (200)");
+		testAdminCrudPlantes();
+		testAdminCrudUtilisateurs();
+	}
+
+	/**
+	 * Teste le CRUD plantes via API + verification HTML.
+	 * @throws Exception En cas d erreur
+	 */
+	private void testAdminCrudPlantes() throws Exception {
+		apiCall("POST", "/admin/plants", new JSONObject().put("name", "Plante Test Frontend").put("price", 42).put("stock", 7), "admin");
+		Document listApres = getPage("/admin/plants", "admin");
+		assertText(listApres, "Plante Test Frontend", "Plante creee visible dans la liste");
+		System.out.println("✅   ↳ CRUD: plante creee et visible");
+		apiCall("PATCH", "/admin/plants/1", new JSONObject().put("name", "Rose 1 Modifiee"), "admin");
+		Document listModif = getPage("/admin/plants", "admin");
+		assertText(listModif, "Rose 1 Modifiee", "Plante modifiee visible");
+		System.out.println("✅   ↳ CRUD: plante modifiee et visible");
+		apiCall("PATCH", "/admin/plants/1", new JSONObject().put("name", "Rose 1"), "admin");
+	}
+
+	/**
+	 * Teste la modification des droits admin via API + verification HTML.
+	 * @throws Exception En cas d erreur
+	 */
+	private void testAdminCrudUtilisateurs() throws Exception {
+		Document usersBefore = getPage("/admin/users", "admin");
+		assertExists(usersBefore, "table", "Tableau utilisateurs present");
+		apiCall("PATCH", "/admin/users/4", new JSONObject().put("admin", true), "admin");
+		Document usersAfter = getPage("/admin/users/4/edit", "admin");
+		assertExists(usersAfter, "form#user-edit-form", "Formulaire edit visible");
+		System.out.println("✅   ↳ CRUD: droits admin modifies");
+		apiCall("PATCH", "/admin/users/4", new JSONObject().put("admin", false), "admin");
 	}
 
 	// --------------------------------------------------------------------------
@@ -323,6 +436,7 @@ public final class E2EFrontend {
 			System.out.println("🧪 Demarrage tests frontend: " + BASE + "\n");
 			test.testVisiteur();
 			test.testUtilisateur();
+			test.testDeconnexion();
 			test.testAdmin();
 			test.testZeroErreur();
 			System.out.println("\n🎉 Tous les tests frontend ont reussi!");
