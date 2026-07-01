@@ -1,6 +1,6 @@
 @(target: models.User, user: Option[models.User])
 
-@views.html.main("Modifier mon profil", user) {
+@views.html.main(user) {
 	<h1>Modifier mon profil</h1>
 	<div id="flash-error" class="alert alert-danger d-none"></div>
 	<form id="profile-edit-form" data-id="@target.getId()">

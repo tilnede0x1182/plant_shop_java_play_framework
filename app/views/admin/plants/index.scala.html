@@ -1,6 +1,6 @@
 @(plants: java.util.List[models.Plant], user: Option[models.User])
 
-@views.html.main("Gestion Plantes", user) {
+@views.html.main(user) {
 	<h1 class="mb-4">Gestion des Plantes</h1>
 	<a href="/admin/plants/new" class="btn btn-success mb-3">Nouvelle Plante</a>
 	<table class="table shadow">

@@ -1,6 +1,6 @@
 @(user: Option[models.User])
 
-@views.html.main("Valider ma commande", user) {
+@views.html.main(user) {
 	<h1>Valider ma commande</h1>
 	<div id="flash-error" class="alert alert-danger d-none"></div>
 	<div id="order-review-container"></div>

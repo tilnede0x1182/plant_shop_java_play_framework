@@ -3,12 +3,11 @@
 # ======================================================
 
 run:
-	sbt stage
-	rm -f target/universal/stage/RUNNING_PID
+	@rm -f target/universal/stage/RUNNING_PID
 	target/universal/stage/bin/plant_shop_play_framework -Dhttp.port=4500
 
 compile:
-	sbt compile
+	sbt stage
 
 compile_run: compile run
 

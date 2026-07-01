@@ -1,6 +1,6 @@
 @(plant: models.Plant, user: Option[models.User])
 
-@views.html.main("Modifier " + plant.getName(), user) {
+@views.html.main(user) {
 	<h1>Modifier @plant.getName()</h1>
 	<form id="plant-edit-form" data-id="@plant.getId()">
 		<div class="mb-3">

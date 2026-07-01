@@ -1,6 +1,6 @@
 @(orders: java.util.List[models.Order], user: Option[models.User])
 
-@views.html.main("Mes Commandes", user) {
+@views.html.main(user) {
 	<h1 class="text-center mb-4">&#128220; Mes Commandes</h1>
 
 	@if(orders.isEmpty()) {

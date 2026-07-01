@@ -1,6 +1,6 @@
 @(target: models.User, user: Option[models.User])
 
-@views.html.main("Modifier " + target.getName(), user) {
+@views.html.main(user) {
 	<h1>Modifier @target.getName()</h1>
 	<form id="user-edit-form" data-id="@target.getId()">
 		<div class="mb-3">

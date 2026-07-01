@@ -1,6 +1,6 @@
 @(plant: models.Plant, user: Option[models.User])
 
-@views.html.main(plant.getName(), user) {
+@views.html.main(user) {
 	<h1>@plant.getName()</h1>
 	<p><strong>Prix :</strong> @plant.getPrice() &euro;</p>
 	<p><strong>Description :</strong> @plant.getDescription()</p>
