@@ -66,7 +66,7 @@ public class OrdersController extends Controller {
 		Optional<User> userOpt = AuthAction.getUserFromRequest(request);
 		if (userOpt.isEmpty()) return unauthorized("Non connecte");
 		JsonNode body = request.body().asJson();
-		if (body == null || !body.has("items")) {
+		if (body == null || !body.has("items") || body.get("items").isEmpty()) {
 			return badRequest("Donnees invalides");
 		}
 		return processOrderCreation(userOpt.get(), body.get("items"));
@@ -84,21 +84,42 @@ public class OrdersController extends Controller {
 	 *	@return Result 201 ou 400
 	 */
 	private Result processOrderCreation(User user, JsonNode items) {
-		Order order = new Order();
-		order.setUser(user);
-		order.setStatus("confirmed");
-		order.save();
+		Order order = createEmptyOrder(user);
 		BigDecimal total = BigDecimal.ZERO;
 		for (JsonNode item : items) {
 			Result errorResult = addItemToOrder(order, item);
 			if (errorResult != null) return errorResult;
-			Plant plant = Plant.find.byId(item.path("plant_id").asLong());
-			int quantity = item.path("quantity").asInt();
-			total = total.add(plant.getPrice().multiply(BigDecimal.valueOf(quantity)));
+			total = total.add(computeItemTotal(item));
 		}
 		order.setTotal(total);
 		order.update();
 		return created(orderToJson(order));
+	}
+
+	/**
+	 *	Cree une commande vide pour un utilisateur.
+	 *
+	 *	@param user Utilisateur proprietaire
+	 *	@return Order persistee
+	 */
+	private Order createEmptyOrder(User user) {
+		Order order = new Order();
+		order.setUser(user);
+		order.setStatus("confirmed");
+		order.save();
+		return order;
+	}
+
+	/**
+	 *	Calcule le total d un item (prix * quantite).
+	 *
+	 *	@param item JsonNode {plant_id, quantity}
+	 *	@return BigDecimal total
+	 */
+	private BigDecimal computeItemTotal(JsonNode item) {
+		Plant plant = Plant.find.byId(item.path("plant_id").asLong());
+		int quantity = item.path("quantity").asInt();
+		return plant.getPrice().multiply(BigDecimal.valueOf(quantity));
 	}
 
 	/**
@@ -115,16 +136,73 @@ public class OrdersController extends Controller {
 		if (plant == null || plant.getStock() < quantity) {
 			return badRequest("Stock insuffisant pour " + plantId);
 		}
+		saveOrderItem(order, plant, quantity);
+		decrementStock(plant, quantity);
+		return null;
+	}
+
+	/**
+	 *	Persiste un item de commande.
+	 *
+	 *	@param order Commande parente
+	 *	@param plant Plante commandee
+	 *	@param quantity Quantite
+	 */
+	private void saveOrderItem(Order order, Plant plant, int quantity) {
 		OrderItem orderItem = new OrderItem();
 		orderItem.setOrder(order);
 		orderItem.setPlant(plant);
 		orderItem.setQuantity(quantity);
 		orderItem.setPrice(plant.getPrice());
 		orderItem.save();
+	}
+
+	/**
+	 *	Decremente le stock d une plante.
+	 *
+	 *	@param plant Plante a mettre a jour
+	 *	@param quantity Quantite a retirer
+	 */
+	private void decrementStock(Plant plant, int quantity) {
 		plant.setStock(plant.getStock() - quantity);
 		plant.update();
-		return null;
 	}
+
+	// ------------------------------------------------------------------------------
+	// Mise a jour et suppression
+	// ------------------------------------------------------------------------------
+
+	/**
+	 *	Met a jour le statut d'une commande (admin).
+	 *	PATCH /api/orders/:id
+	 */
+	public Result update(Http.Request request, Long orderId) {
+		Optional<User> userOpt = AuthAction.getUserFromRequest(request);
+		if (userOpt.isEmpty()) return unauthorized("Non connecte");
+		Order order = Order.find.byId(orderId);
+		if (order == null) return notFound("Commande introuvable");
+		JsonNode body = request.body().asJson();
+		if (body.has("status")) order.setStatus(body.path("status").asText());
+		order.update();
+		return ok(orderToJson(order));
+	}
+
+	/**
+	 *	Supprime une commande (admin).
+	 *	DELETE /api/orders/:id
+	 */
+	public Result delete(Http.Request request, Long orderId) {
+		Optional<User> userOpt = AuthAction.getUserFromRequest(request);
+		if (userOpt.isEmpty()) return unauthorized("Non connecte");
+		Order order = Order.find.byId(orderId);
+		if (order == null) return notFound("Commande introuvable");
+		order.delete();
+		return ok("Commande supprimee");
+	}
+
+	// ------------------------------------------------------------------------------
+	// Serialisation JSON
+	// ------------------------------------------------------------------------------
 
 	/**
 	 *	Convertit une commande en JsonNode.
@@ -137,6 +215,42 @@ public class OrdersController extends Controller {
 		node.put("id", order.getId());
 		node.put("total", order.getTotal());
 		node.put("status", order.getStatus());
+		ArrayNode itemsArray = Json.newArray();
+		if (order.getOrderItems() != null) {
+			for (OrderItem item : order.getOrderItems()) {
+				itemsArray.add(orderItemToJson(item));
+			}
+		}
+		node.set("orderItems", itemsArray);
+		return node;
+	}
+
+	/**
+	 *	Convertit un OrderItem en JsonNode avec la plante imbriquee.
+	 *
+	 *	@param item OrderItem a convertir
+	 *	@return JsonNode
+	 */
+	private JsonNode orderItemToJson(OrderItem item) {
+		ObjectNode node = Json.newObject();
+		node.put("id", item.getId());
+		node.put("quantity", item.getQuantity());
+		node.set("plant", plantToJson(item.getPlant()));
+		return node;
+	}
+
+	/**
+	 *	Convertit une plante en JsonNode.
+	 *
+	 *	@param plant Plante a convertir
+	 *	@return JsonNode
+	 */
+	private JsonNode plantToJson(Plant plant) {
+		ObjectNode node = Json.newObject();
+		node.put("id", plant.getId());
+		node.put("name", plant.getName());
+		node.put("price", plant.getPrice());
+		node.put("stock", plant.getStock());
 		return node;
 	}
 

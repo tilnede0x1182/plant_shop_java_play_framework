@@ -2,8 +2,11 @@
 # This file defines all application routes (Higher priority routes first)
 
 # ---- Auth ----
++ nocsrf
 POST    /api/auth/register          controllers.AuthController.register(request: Request)
++ nocsrf
 POST    /api/auth/login             controllers.AuthController.login(request: Request)
++ nocsrf
 POST    /api/auth/logout            controllers.AuthController.logout()
 GET     /api/auth/me                controllers.AuthController.me(request: Request)
 
@@ -13,26 +16,48 @@ GET     /api/plants/:id             controllers.PlantsController.show(id: Long)
 
 # ---- Admin Plants ----
 GET     /api/admin/plants           controllers.AdminPlantsController.index(request: Request)
++ nocsrf
 POST    /api/admin/plants           controllers.AdminPlantsController.create(request: Request)
++ nocsrf
 PATCH   /api/admin/plants/:id       controllers.AdminPlantsController.update(request: Request, id: Long)
++ nocsrf
 DELETE  /api/admin/plants/:id       controllers.AdminPlantsController.delete(request: Request, id: Long)
 
 # ---- Users (owner ou admin) ----
 GET     /api/users/:id              controllers.UsersController.show(request: Request, id: Long)
++ nocsrf
 PATCH   /api/users/:id              controllers.UsersController.update(request: Request, id: Long)
 
 # ---- Admin Users ----
 GET     /api/admin/users            controllers.AdminUsersController.index(request: Request)
++ nocsrf
 POST    /api/users                  controllers.AdminUsersController.create(request: Request)
++ nocsrf
 PATCH   /api/admin/users/:id        controllers.AdminUsersController.update(request: Request, id: Long)
++ nocsrf
 DELETE  /api/admin/users/:id        controllers.AdminUsersController.delete(request: Request, id: Long)
 
 # ---- Orders ----
 GET     /api/orders                 controllers.OrdersController.index(request: Request)
++ nocsrf
 POST    /api/orders                 controllers.OrdersController.create(request: Request)
++ nocsrf
+PATCH   /api/orders/:id             controllers.OrdersController.update(request: Request, id: Long)
++ nocsrf
+DELETE  /api/orders/:id             controllers.OrdersController.delete(request: Request, id: Long)
 
 # ---- Pages front (Twirl) ----
 GET     /                           controllers.HomeController.index()
+GET     /plants                     controllers.PagesController.plants(request: Request)
+GET     /plants/:id                 controllers.PagesController.plantShow(request: Request, id: Long)
+GET     /cart                       controllers.PagesController.cart(request: Request)
+GET     /auth/signin                controllers.PagesController.signin()
+GET     /auth/register              controllers.PagesController.register()
+GET     /orders                     controllers.PagesController.orders(request: Request)
+GET     /orders/new                 controllers.PagesController.newOrder(request: Request)
+GET     /users/:id                  controllers.PagesController.userProfile(request: Request, id: Long)
+GET     /admin/plants               controllers.PagesController.adminPlants(request: Request)
+GET     /admin/users                controllers.PagesController.adminUsers(request: Request)
 
 # ---- Assets ----
 GET     /assets/*file               controllers.Assets.versioned(path="/public", file: Asset)

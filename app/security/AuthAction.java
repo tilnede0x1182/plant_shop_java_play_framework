@@ -14,16 +14,11 @@ import play.mvc.*;
 import play.mvc.Http.Cookie;
 
 import javax.crypto.SecretKey;
-import javax.inject.Inject;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-
-import com.typesafe.config.Config;
 
 // ==============================================================================
 // Donnees
@@ -40,21 +35,7 @@ import com.typesafe.config.Config;
  */
 public class AuthAction {
 
-	private static String jwtSecret;
-
-	// ------------------------------------------------------------------------------
-	// Configuration
-	// ------------------------------------------------------------------------------
-
-	/**
-	 *	Initialise le secret JWT depuis la configuration Play.
-	 *
-	 *	@param config Configuration Play injectee
-	 */
-	@Inject
-	public AuthAction(Config config) {
-		jwtSecret = config.getString("play.http.secret.key");
-	}
+	private static final String jwtSecret = com.typesafe.config.ConfigFactory.load().getString("play.http.secret.key");
 
 	/**
 	 *	Retourne la cle secrete HMAC pour signer les JWT.

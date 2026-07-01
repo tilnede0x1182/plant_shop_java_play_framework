@@ -31,7 +31,7 @@ import org.json.JSONObject;
  * Test end-to-end Java 21.
  * Dépendance : org.json.
  */
-public final class TestE2E {
+public final class E2EBackend {
 
 	// --------------------------------------------------------------------------
 	// Configuration
@@ -43,18 +43,18 @@ public final class TestE2E {
 	 * @throws IOException En cas d erreur lecture
 	 */
 	private static Map<String, String> env() throws IOException {
-		Map<String, String> m = new HashMap<>();
-		try (BufferedReader br = new BufferedReader(new FileReader(".env"))) {
-			String l;
-			while ((l = br.readLine()) != null) {
-				int i = l.indexOf('=');
-				if (i > 0)
-					m.put(l.substring(0, i).trim(), l.substring(i + 1).trim());
+		Map<String, String> envMap = new HashMap<>();
+		try (BufferedReader reader = new BufferedReader(new FileReader(".env"))) {
+			String line;
+			while ((line = reader.readLine()) != null) {
+				int separatorIndex = line.indexOf('=');
+				if (separatorIndex > 0)
+					envMap.put(line.substring(0, separatorIndex).trim(), line.substring(separatorIndex + 1).trim());
 			}
-		} catch (IOException e) {
+		} catch (IOException ioError) {
 			// Ignorer si .env n'existe pas, les valeurs par défaut seront utilisées
 		}
-		return m;
+		return envMap;
 	}
 
 	private static final Map<String, String> CFG;
@@ -84,7 +84,7 @@ public final class TestE2E {
 	/**
 	 * Constructeur initialisant le timestamp.
 	 */
-	public TestE2E() {
+	public E2EBackend() {
 		this.timestamp = ts();
 	}
 
@@ -101,13 +101,13 @@ public final class TestE2E {
 	 * @param n int Longueur
 	 * @return String Chaîne aléatoire
 	 */
-	private static String rand(int n) {
-		String a = "abcdefghijklmnopqrstuvwxyz0123456789";
-		StringBuilder sb = new StringBuilder();
-		Random r = new Random();
-		for (int i = 0; i < n; i++)
-			sb.append(a.charAt(r.nextInt(a.length())));
-		return sb.toString();
+	private static String rand(int length) {
+		String alphabet = "abcdefghijklmnopqrstuvwxyz0123456789";
+		StringBuilder builder = new StringBuilder();
+		Random random = new Random();
+		for (int idx = 0; idx < length; idx++)
+			builder.append(alphabet.charAt(random.nextInt(alphabet.length())));
+		return builder.toString();
 	}
 
 	/**
@@ -136,34 +136,42 @@ public final class TestE2E {
 	}
 
 	/**
-	 * Effectue un appel HTTP et retourne un objet JSON.
-	 * @param m String Méthode HTTP
-	 * @param p String Path
-	 * @param exp int Code attendu
-	 * @param body JSONObject Corps de requête
+	 * Effectue un appel HTTP brut et retourne la reponse.
+	 * @param method String Methode HTTP
+	 * @param path String Path API
+	 * @param expectedCode int Code attendu
+	 * @param body JSONObject Corps de requete (null si absent)
 	 * @param who String Identifiant session
-	 * @return JSONObject Réponse
+	 * @return HttpResponse Reponse HTTP brute
 	 * @throws Exception En cas d erreur
 	 */
-	private JSONObject call(String m, String p, int exp, JSONObject body, String who) throws Exception {
+	private HttpResponse<String> doRequest(String method, String path, int expectedCode, JSONObject body, String who) throws Exception {
 		HttpClient client = HttpClient.newBuilder().build();
 		HttpRequest.Builder builder = HttpRequest.newBuilder()
-				.uri(URI.create(BASE + p))
-				.method(
-						m,
-						body == null
-								? HttpRequest.BodyPublishers.noBody()
-								: HttpRequest.BodyPublishers.ofString(body.toString()))
-				.header("Content-Type", "application/json");
-
+				.uri(URI.create(BASE + path))
+				.method(method, body == null ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofString(body.toString()));
+		if (body != null) {
+			builder.header("Content-Type", "application/json");
+		}
 		if (cookie.get(who) != null) {
 			builder.header("Cookie", cookie.get(who));
 		}
-
 		HttpResponse<String> response = client.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+		updateCookies(response, who);
 		int code = response.statusCode();
+		System.out.printf("%s %-7s %s [%d]%n", code == expectedCode ? "✅" : "❌", method, path, code);
+		if (code != expectedCode) {
+			throw new RuntimeException("API " + method + " " + path + " -> " + code + " (attendu " + expectedCode + ")\n" + response.body());
+		}
+		return response;
+	}
 
-		// Gestion améliorée des cookies, concatène les nouveaux cookies
+	/**
+	 * Met a jour les cookies depuis la reponse Set-Cookie.
+	 * @param response HttpResponse Reponse HTTP
+	 * @param who String Identifiant session
+	 */
+	private void updateCookies(HttpResponse<String> response, String who) {
 		List<String> setCookies = response.headers().allValues("Set-Cookie");
 		if (!setCookies.isEmpty()) {
 			String currentCookies = cookie.getOrDefault(who, "");
@@ -177,54 +185,42 @@ public final class TestE2E {
 			}
 			cookie.put(who, currentCookies);
 		}
+	}
 
-		System.out.printf("%s %-7s %s [%d]%n", code == exp ? "✅" : "❌", m, p, code);
-
-		if (code != exp) {
-			throw new RuntimeException("API " + m + " " + p + " -> " + code + " (attendu " + exp + ")\n" + response.body());
-		}
-
-		String contentType = response.headers().firstValue("Content-Type").orElse("");
+	/**
+	 * Effectue un appel HTTP et retourne un objet JSON.
+	 * @param method String Methode HTTP
+	 * @param path String Path API
+	 * @param expectedCode int Code attendu
+	 * @param body JSONObject Corps de requete
+	 * @param who String Identifiant session
+	 * @return JSONObject Reponse JSON
+	 * @throws Exception En cas d erreur
+	 */
+	private JSONObject call(String method, String path, int expectedCode, JSONObject body, String who) throws Exception {
+		HttpResponse<String> response = doRequest(method, path, expectedCode, body, who);
 		String txt = response.body().trim();
-		if (contentType.startsWith("application/json") || txt.startsWith("{")) {
-				return txt.isEmpty() ? new JSONObject() : new JSONObject(txt);
+		if (txt.startsWith("{") || txt.startsWith("[")) {
+			return txt.isEmpty() ? new JSONObject() : new JSONObject(txt);
 		}
 		return new JSONObject();
 	}
 
 	/**
 	 * Effectue un appel HTTP et retourne un tableau JSON.
-	 * @param m String Méthode HTTP
-	 * @param p String Path
-	 * @param exp int Code attendu
-	 * @param body JSONObject Corps de requête
+	 * @param method String Methode HTTP
+	 * @param path String Path API
+	 * @param expectedCode int Code attendu
+	 * @param body JSONObject Corps de requete
 	 * @param who String Identifiant session
-	 * @return JSONArray Réponse tableau
+	 * @return JSONArray Reponse tableau JSON
 	 * @throws Exception En cas d erreur
 	 */
-	private JSONArray callArray(String m, String p, int exp, JSONObject body, String who) throws Exception {
-		// Wrapper pour les réponses qui sont des listes JSON
-		HttpClient client = HttpClient.newBuilder().build();
-		HttpRequest.Builder builder = HttpRequest.newBuilder()
-				.uri(URI.create(BASE + p))
-				.method(m, body == null ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofString(body.toString()))
-				.header("Content-Type", "application/json");
-
-		if (cookie.get(who) != null) builder.header("Cookie", cookie.get(who));
-
-		HttpResponse<String> response = client.send(builder.build(), HttpResponse.BodyHandlers.ofString());
-		int code = response.statusCode();
-
-		System.out.printf("%s %-7s %s [%d]%n", code == exp ? "✅" : "❌", m, p, code);
-
-		if (code != exp) {
-			throw new RuntimeException("API " + m + " " + p + " -> " + code + " (attendu " + exp + ")\n" + response.body());
-		}
-
-		String contentType = response.headers().firstValue("Content-Type").orElse("");
-		if (contentType.startsWith("application/json")) {
-			String txt = response.body();
-			return txt.trim().isEmpty() ? new JSONArray() : new JSONArray(txt);
+	private JSONArray callArray(String method, String path, int expectedCode, JSONObject body, String who) throws Exception {
+		HttpResponse<String> response = doRequest(method, path, expectedCode, body, who);
+		String txt = response.body().trim();
+		if (txt.startsWith("[")) {
+			return txt.isEmpty() ? new JSONArray() : new JSONArray(txt);
 		}
 		return new JSONArray();
 	}
@@ -355,7 +351,7 @@ public final class TestE2E {
 		call("PATCH", "/users/" + id, 200, name_update, "admin");
 		JSONObject get = call("GET", "/users/" + id, 200, null, "admin");
 		assert_eq(get, "name", "Tester Update");
-		call("DELETE", "/users/" + id, 200, null, "admin");
+		call("DELETE", "/admin/users/" + id, 200, null, "admin");
 	}
 
 	// --------------------------------------------------------------------------
@@ -377,7 +373,7 @@ public final class TestE2E {
 		assert_num(plant, "id");
 		int pid = plant.getInt("id");
 
-		JSONObject item = new JSONObject().put("plantId", pid).put("quantity", 2);
+		JSONObject item = new JSONObject().put("plant_id", pid).put("quantity", 2);
 		JSONObject order_data = new JSONObject().put("items", new JSONArray().put(item));
 		JSONObject order = call("POST", "/orders", 201, order_data, "user");
 		assert_num(order, "id");
@@ -419,7 +415,7 @@ public final class TestE2E {
 	 */
 	private void test_user_profile(String email) throws Exception {
 		System.out.println("\n📌 TEST MODULE: USER PROFILE (user)");
-		JSONArray users = callArray("GET", "/users", 200, null, "admin");
+		JSONArray users = callArray("GET", "/admin/users", 200, null, "admin");
 		JSONObject user_obj = null;
 		for (int i = 0; i < users.length(); i++) {
 			JSONObject u = users.getJSONObject(i);
@@ -466,7 +462,7 @@ public final class TestE2E {
 		int pid = plant.getInt("id");
 		call("DELETE", "/admin/plants/" + pid, 200, null, "admin");
 
-		call("GET", "/users", 403, null, "user");
+		call("GET", "/admin/users", 403, null, "user");
 	}
 
 	// --------------------------------------------------------------------------
@@ -534,7 +530,7 @@ public final class TestE2E {
 		JSONObject user_get = call("GET", "/users/" + id, 200, null, "admin");
 		assert_eq(user_get, "name", nouveau_nom);
 
-		call("DELETE", "/users/" + id, 200, null, "admin");
+		call("DELETE", "/admin/users/" + id, 200, null, "admin");
 	}
 
 	// --------------------------------------------------------------------------
@@ -555,12 +551,55 @@ public final class TestE2E {
 		System.out.printf("   ↳ Utilisateur connecté: %s (%s)%n", mail, nom);
 	}
 
+	// --------------------------------------------------------------------------
+	// Test Cas Limites (section 44)
+	// --------------------------------------------------------------------------
+
+	/**
+	 * Teste les cas limites : auth, stock, droits, ressources inexistantes.
+	 * @throws Exception En cas d erreur
+	 */
+	private void test_edge_cases() throws Exception {
+		System.out.println("\n📌 TEST MODULE: CAS LIMITES");
+		call("POST", "/auth/login", 401, new JSONObject().put("email", ADMIN_EMAIL).put("password", "mauvais_mdp"), "admin");
+		System.out.println("✅   ↳ Login mauvais password rejete");
+		call("POST", "/auth/login", 401, new JSONObject().put("email", "nexistepas@x.com").put("password", "x"), "admin");
+		System.out.println("✅   ↳ Login email inexistant rejete");
+		call("POST", "/auth/register", 400, new JSONObject().put("email", ADMIN_EMAIL).put("password", "x").put("name", "x"), "admin");
+		System.out.println("✅   ↳ Register email existant rejete");
+		call("GET", "/orders", 401, null, "anonymous");
+		System.out.println("✅   ↳ GET /orders non connecte rejete");
+		call("GET", "/auth/me", 401, null, "anonymous");
+		System.out.println("✅   ↳ GET /auth/me non connecte rejete");
+		JSONObject zeroStock = call("POST", "/admin/plants", 201, new JSONObject().put("name", "Epuisee").put("price", 10).put("stock", 0), "admin");
+		JSONArray plants = callArray("GET", "/plants", 200, null, "user");
+		boolean found = false;
+		for (int idx = 0; idx < plants.length(); idx++) {
+			if (plants.getJSONObject(idx).getInt("id") == zeroStock.getInt("id")) { found = true; break; }
+		}
+		if (found) throw new RuntimeException("Plante stock 0 ne devrait pas apparaitre");
+		System.out.println("✅   ↳ Plante stock 0 filtree correctement");
+		call("DELETE", "/admin/plants/" + zeroStock.getInt("id"), 200, null, "admin");
+		call("GET", "/plants/999999", 404, null, "user");
+		System.out.println("✅   ↳ GET plante inexistante -> 404");
+		JSONObject limitPlant = call("POST", "/admin/plants", 201, new JSONObject().put("name", "Limitee").put("price", 10).put("stock", 2), "admin");
+		JSONObject orderBad = new JSONObject().put("items", new JSONArray().put(new JSONObject().put("plant_id", limitPlant.getInt("id")).put("quantity", 999)));
+		call("POST", "/orders", 400, orderBad, "user");
+		System.out.println("✅   ↳ Commande stock insuffisant rejetee");
+		call("DELETE", "/admin/plants/" + limitPlant.getInt("id"), 200, null, "admin");
+		call("POST", "/orders", 400, new JSONObject().put("items", new JSONArray()), "user");
+		System.out.println("✅   ↳ Commande items vides rejetee");
+		call("GET", "/admin/plants", 403, null, "user");
+		call("GET", "/admin/users", 403, null, "user");
+		System.out.println("✅   ↳ Acces admin refuse pour non-admin");
+	}
+
 	// ==========================================================================
 	// Main
 	// ==========================================================================
 
 	/**
-	 * Point d'entrée des tests.
+	 * Point d'entree des tests.
 	 * @param args String[] Arguments CLI
 	 */
 	public static void main(String[] args) {
@@ -570,35 +609,33 @@ public final class TestE2E {
 				System.exit(2);
 			}
 
-			TestE2E t = new TestE2E();
+			E2EBackend test = new E2EBackend();
 
-			String random_tag = rand(4);
-			String userEmail = "utilisateur_de_test_" + t.timestamp + "_" + random_tag + "@example.com";
+			String randomTag = rand(4);
+			String userEmail = "utilisateur_de_test_" + test.timestamp + "_" + randomTag + "@example.com";
 			String userPassword = "pass123";
 
-			System.out.println("🧪 Démarrage des tests: http://localhost:" + PORT + "/api\n");
+			System.out.println("🧪 Demarrage des tests: http://localhost:" + PORT + "/api\n");
 
-			// Connexion des utilisateurs de base pour les tests
-			t.login(ADMIN_EMAIL, ADMIN_PWD, "admin");
-			t.register("User", userEmail, userPassword, "user"); // Utilise un nom générique pour l'enregistrement
-			t.login(userEmail, userPassword, "user");
+			test.login(ADMIN_EMAIL, ADMIN_PWD, "admin");
+			test.register("User", userEmail, userPassword, "user");
+			test.login(userEmail, userPassword, "user");
 
-			// Exécution des suites de tests
-			t.test_plants();
-			t.test_users();
-			t.test_orders();
-			t.test_user_profile(userEmail);
-			t.test_auth_roles();
-			t.test_admin_plants();
-			t.test_admin_users();
-			t.test_auth_me();
+			test.test_plants();
+			test.test_users();
+			test.test_orders();
+			test.test_user_profile(userEmail);
+			test.test_auth_roles();
+			test.test_admin_plants();
+			test.test_admin_users();
+			test.test_auth_me();
+			test.test_edge_cases();
 
-			System.out.println("\n🎉 Tous les tests ont réussi!");
+			System.out.println("\n🎉 Tous les tests ont reussi!");
 			System.exit(0);
 
-		} catch (Exception e) {
-			System.err.println("\n❌ Tests interrompus: " + e.getMessage());
-			// e.printStackTrace(); // Décommenter pour un débogage détaillé
+		} catch (Exception testException) {
+			System.err.println("\n❌ Tests interrompus: " + testException.getMessage());
 			System.exit(1);
 		}
 	}

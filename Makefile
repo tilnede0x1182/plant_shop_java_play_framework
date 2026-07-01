@@ -33,10 +33,9 @@ seed-dev:
 
 db-create:
 	psql -U tilnede0x1182 -d postgres -c "CREATE DATABASE plant_shop_play_framework;"
-	psql -U tilnede0x1182 -d plant_shop_play_framework -f conf/evolutions/default/1.sql
 
 db-migrate:
-	psql -U tilnede0x1182 -d plant_shop_play_framework -f conf/evolutions/default/1.sql
+	@echo "Les evolutions Play s'appliquent automatiquement au demarrage du serveur."
 
 db-drop:
 	psql -U tilnede0x1182 -d postgres -c "DROP DATABASE IF EXISTS plant_shop_play_framework;"
@@ -49,15 +48,20 @@ db-reset: db-drop db-create db-seed
 # 🧪 Tests
 # ======================================================
 
-tests:
-	@sbt "Test / runMain test.TestE2E" 2>/dev/null | grep -v "^\[" | grep -v "^$$"
+tests: tests-backend
+
+tests-backend:
+	@sbt "Test / runMain test.E2EBackend" 2>/dev/null | grep -v "^\[" | grep -v "^$$"
+
+tests-frontend:
+	@sbt "Test / runMain test.E2EFrontend" 2>/dev/null | grep -v "^\[" | grep -v "^$$"
 
 test-build:
 	sbt "Test / compile"
 
 test-dev:
 	sbt "Test / compile"
-	@sbt "Test / runMain test.TestE2E" 2>/dev/null | grep -v "^\[" | grep -v "^$$"
+	@sbt "Test / runMain test.E2EBackend" 2>/dev/null | grep -v "^\[" | grep -v "^$$"
 
 # ======================================================
 # 🛠️ Utilitaires

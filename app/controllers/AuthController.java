@@ -73,7 +73,7 @@ public class AuthController extends Controller {
 			return unauthorized("Identifiants invalides");
 		}
 		String token = AuthAction.generateToken(user.getId(), user.isAdmin());
-		return ok(userToJson(user))
+		return created(userToJson(user))
 			.withCookies(AuthAction.buildCookie(token));
 	}
 

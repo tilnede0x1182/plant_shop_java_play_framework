@@ -1,6 +1,4 @@
--- ───────────────────────────────
---   Initialisation Plant Shop DB
--- ───────────────────────────────
+# --- !Ups
 
 CREATE TABLE IF NOT EXISTS users (
 	id SERIAL PRIMARY KEY,
@@ -40,3 +38,10 @@ CREATE TABLE IF NOT EXISTS order_items (
 CREATE INDEX idx_orders_user_id ON orders(user_id);
 CREATE INDEX idx_order_items_order_id ON order_items(order_id);
 CREATE INDEX idx_order_items_plant_id ON order_items(plant_id);
+
+# --- !Downs
+
+DROP TABLE IF EXISTS order_items CASCADE;
+DROP TABLE IF EXISTS orders CASCADE;
+DROP TABLE IF EXISTS plants CASCADE;
+DROP TABLE IF EXISTS users CASCADE;

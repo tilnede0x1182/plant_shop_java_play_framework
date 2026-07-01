@@ -23,6 +23,6 @@ public class HomeController extends Controller {
 	 *	@return Redirection 302 vers /plants
 	 */
 	public Result index() {
-		return redirect("/plants");
+		return Results.found("/plants");
 	}
 }
