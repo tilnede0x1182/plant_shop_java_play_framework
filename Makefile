@@ -12,10 +12,12 @@ compile:
 compile_run: compile run
 
 prod:
-	sbt dist
-	cd target/universal && unzip -o plant_shop_play_framework-1.0-SNAPSHOT.zip
+	@if [ ! -f target/universal/plant_shop_play_framework-1.0-SNAPSHOT/bin/plant_shop_play_framework ]; \
+		then sbt dist && cd target/universal && unzip -o plant_shop_play_framework-1.0-SNAPSHOT.zip; \
+	fi
+	@rm -f target/universal/plant_shop_play_framework-1.0-SNAPSHOT/RUNNING_PID
 	target/universal/plant_shop_play_framework-1.0-SNAPSHOT/bin/plant_shop_play_framework -Dhttp.port=4500
-
+	
 # ======================================================
 # 🌱 Seed
 # ======================================================
