@@ -21,7 +21,13 @@
 							}
 						}
 					</ul>
-					<p><strong>Statut :</strong> @order.getStatus()</p>
+					<p><strong>Statut :</strong> @{order.getStatus() match {
+						case "pending" => "En attente"
+						case "confirmed" => "Confirm&eacute;e"
+						case "shipped" => "Exp&eacute;di&eacute;e"
+						case "delivered" => "Livr&eacute;e"
+						case other => other
+					}}</p>
 				</div>
 			</div>
 		}

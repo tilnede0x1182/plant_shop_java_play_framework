@@ -137,7 +137,8 @@ public class PagesController extends Controller {
 		if (userOpt.isEmpty()) return redirectFound("/auth/signin");
 		List<Order> orderList = Order.find.query()
 			.fetch("orderItems").fetch("orderItems.plant")
-			.where().eq("user", userOpt.get()).findList();
+			.where().eq("user", userOpt.get())
+			.orderBy("createdAt desc").findList();
 		return ok(views.html.orders.index.render(orderList, toScalaOption(userOpt)));
 	}
 
